@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <beans profile="test">
+        <bean name="hibernateConfigPath" class="java.lang.String">
+            <constructor-arg value="hibernate-test.cfg.xml"/>
+        </bean>
+    </beans>
+    <beans profile="!test">
+        <bean name="hibernateConfigPath" class="java.lang.String">
+            <constructor-arg value="hibernate.cfg.xml"/>
+        </bean>
+    </beans>
+
+    <beans>
+        <bean name="hibernateConfiguration" class="org.hibernate.cfg.Configuration"/>
+        <bean class="org.springframework.beans.factory.config.MethodInvokingBean">
+            <property name="targetObject" ref="hibernateConfiguration"/>
+            <property name="targetMethod" value="configure"/>
+            <property name="arguments">
+                <list>
+                    <ref bean="hibernateConfigPath"/>
+                </list>
+            </property>
+        </bean>
+        <bean name="sessionFactory" factory-bean="hibernateConfiguration" factory-method="buildSessionFactory"/>
+    </beans>
+
+    <beans profile="test">
+        <bean class="com.lonebytesoft.hamster.accounting.TestDataPopulator" init-method="populate">
+            <constructor-arg name="accountDao" ref="accountDao"/>
+            <constructor-arg name="categoryDao" ref="categoryDao"/>
+            <constructor-arg name="currencyDao" ref="currencyDao"/>
+            <constructor-arg name="operationDao" ref="operationDao"/>
+            <constructor-arg name="transactionDao" ref="transactionDao"/>
+            <constructor-arg name="configDao" ref="configDao"/>
+            <constructor-arg name="categoryCount" value="8"/>
+            <constructor-arg name="currencyCount" value="4"/>
+            <constructor-arg name="accountCount" value="6"/>
+            <constructor-arg name="transactionCount" value="300"/>
+        </bean>
+    </beans>
+
+    <beans>
+        <bean name="accountDao" class="com.lonebytesoft.hamster.accounting.dao.AccountDaoImpl">
+            <constructor-arg ref="sessionFactory"/>
+        </bean>
+        <bean name="categoryDao" class="com.lonebytesoft.hamster.accounting.dao.CategoryDaoImpl">
+            <constructor-arg ref="sessionFactory"/>
+        </bean>
+        <bean name="currencyDao" class="com.lonebytesoft.hamster.accounting.dao.CurrencyDaoImpl">
+            <constructor-arg ref="sessionFactory"/>
+        </bean>
+        <bean name="operationDao" class="com.lonebytesoft.hamster.accounting.dao.OperationDaoImpl">
+            <constructor-arg ref="sessionFactory"/>
+        </bean>
+        <bean name="transactionDao" class="com.lonebytesoft.hamster.accounting.dao.TransactionDaoImpl">
+            <constructor-arg ref="sessionFactory"/>
+        </bean>
+
+        <bean name="configDao" class="com.lonebytesoft.hamster.accounting.dao.ConfigDaoImpl">
+            <constructor-arg ref="sessionFactory"/>
+        </bean>
+
+        <bean name="transactionService" class="com.lonebytesoft.hamster.accounting.service.TransactionServiceImpl">
+            <constructor-arg name="transactionDao" ref="transactionDao"/>
+            <constructor-arg name="operationDao" ref="operationDao"/>
+        </bean>
+
+        <bean name="modelViewMapper" class="com.lonebytesoft.hamster.accounting.ModelViewMapper"/>
+
+        <bean name="xmlManager" class="com.lonebytesoft.hamster.accounting.util.XmlManager">
+            <constructor-arg name="xslPath" value="xsl/"/>
+        </bean>
+    </beans>
+
+</beans>

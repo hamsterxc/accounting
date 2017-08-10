@@ -5,6 +5,8 @@ import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
+import javax.persistence.JoinColumn
+import javax.persistence.ManyToOne
 
 @Entity
 class Operation : HasId<Long> {
@@ -13,15 +15,17 @@ class Operation : HasId<Long> {
     @GeneratedValue(strategy = GenerationType.AUTO)
     override var id: Long = 0
 
-    @Column(name = "transaction_id", nullable = false)
-    var transactionId: Long = 0
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "transaction_id", nullable = false)
+    lateinit var transaction: Transaction
 
-    @Column(name = "account_id", nullable = false)
-    var accountId: Long = 0
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "account_id", nullable = false)
+    lateinit var account: Account
 
     @Column
     var amount: Double = 0.toDouble()
 
-    override fun toString(): String = "Operation(id=$id, transactionId=$transactionId, accountId=$accountId, amount=$amount)"
+    override fun toString(): String = "Operation(id=$id, transactionId=" + transaction.id + ", account=$account, amount=$amount)"
 
 }

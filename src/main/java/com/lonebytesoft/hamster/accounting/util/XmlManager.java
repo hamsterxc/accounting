@@ -2,6 +2,9 @@ package com.lonebytesoft.hamster.accounting.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -18,13 +21,15 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 
+@Component
 public class XmlManager {
 
     private static final Logger logger = LoggerFactory.getLogger(XmlManager.class);
 
     private final String xslPath;
 
-    public XmlManager(final String xslPath) {
+    @Autowired
+    public XmlManager(@Value("${accounting.xml.xslpath}") final String xslPath) {
         if(xslPath.endsWith("/")) {
             this.xslPath = xslPath;
         } else {

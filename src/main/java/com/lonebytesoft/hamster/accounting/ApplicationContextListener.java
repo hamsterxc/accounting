@@ -1,6 +1,5 @@
 package com.lonebytesoft.hamster.accounting;
 
-import org.hibernate.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -34,10 +33,9 @@ public class ApplicationContextListener implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        deregisterDrivers();
+        logger.info("Servlet context destroying");
 
-        final SessionFactory sessionFactory = applicationContext.getBean("sessionFactory", SessionFactory.class);
-        sessionFactory.close();
+        deregisterDrivers();
     }
 
     private void deregisterDrivers() {

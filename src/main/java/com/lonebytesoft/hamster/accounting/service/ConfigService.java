@@ -1,8 +1,8 @@
-package com.lonebytesoft.hamster.accounting.dao;
+package com.lonebytesoft.hamster.accounting.service;
 
 import com.lonebytesoft.hamster.accounting.model.Config;
 
-public interface ConfigDao {
+public interface ConfigService {
 
     Config get();
 

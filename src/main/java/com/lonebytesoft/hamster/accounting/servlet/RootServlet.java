@@ -2,18 +2,15 @@ package com.lonebytesoft.hamster.accounting.servlet;
 
 import com.lonebytesoft.hamster.accounting.ApplicationContextListener;
 import com.lonebytesoft.hamster.accounting.ModelViewMapper;
-import com.lonebytesoft.hamster.accounting.dao.AccountDao;
-import com.lonebytesoft.hamster.accounting.dao.CategoryDao;
-import com.lonebytesoft.hamster.accounting.dao.ConfigDao;
-import com.lonebytesoft.hamster.accounting.dao.CurrencyDao;
-import com.lonebytesoft.hamster.accounting.dao.OperationDao;
-import com.lonebytesoft.hamster.accounting.dao.TransactionDao;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Config;
 import com.lonebytesoft.hamster.accounting.model.Currency;
-import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
+import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
+import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
+import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
+import com.lonebytesoft.hamster.accounting.service.ConfigService;
 import com.lonebytesoft.hamster.accounting.service.TransactionAction;
 import com.lonebytesoft.hamster.accounting.service.TransactionService;
 import com.lonebytesoft.hamster.accounting.util.DateParser;
@@ -30,6 +27,10 @@ import com.lonebytesoft.hamster.accounting.view.TransactionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -46,10 +47,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
+@Configuration
+@EnableAutoConfiguration
+@EntityScan("com.lonebytesoft.hamster.accounting.model")
+@EnableJpaRepositories("com.lonebytesoft.hamster.accounting.repository")
 public class RootServlet extends HttpServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(RootServlet.class);
@@ -67,13 +71,11 @@ public class RootServlet extends HttpServlet {
             new DateParser("dd.MM.yyyy")
     );
 
-    private AccountDao accountDao;
-    private CategoryDao categoryDao;
-    private CurrencyDao currencyDao;
-    private OperationDao operationDao;
-    private TransactionDao transactionDao;
-    private ConfigDao configDao;
+    private AccountRepository accountRepository;
+    private CategoryRepository categoryRepository;
+    private TransactionRepository transactionRepository;
 
+    private ConfigService configService;
     private TransactionService transactionService;
 
     private ModelViewMapper modelViewMapper;
@@ -89,18 +91,16 @@ public class RootServlet extends HttpServlet {
         final BeanFactory beanFactory = (BeanFactory) config.getServletContext()
                 .getAttribute(ApplicationContextListener.ATTRIBUTE_APPLICATION_CONTEXT);
 
-        accountDao = beanFactory.getBean("accountDao", AccountDao.class);
-        categoryDao = beanFactory.getBean("categoryDao", CategoryDao.class);
-        currencyDao = beanFactory.getBean("currencyDao", CurrencyDao.class);
-        operationDao = beanFactory.getBean("operationDao", OperationDao.class);
-        transactionDao = beanFactory.getBean("transactionDao", TransactionDao.class);
-        configDao = beanFactory.getBean("configDao", ConfigDao.class);
+        accountRepository = beanFactory.getBean(AccountRepository.class);
+        categoryRepository = beanFactory.getBean(CategoryRepository.class);
+        transactionRepository = beanFactory.getBean(TransactionRepository.class);
 
-        transactionService = beanFactory.getBean("transactionService", TransactionService.class);
+        configService = beanFactory.getBean(ConfigService.class);
+        transactionService = beanFactory.getBean(TransactionService.class);
 
-        modelViewMapper = beanFactory.getBean("modelViewMapper", ModelViewMapper.class);
+        modelViewMapper = beanFactory.getBean(ModelViewMapper.class);
 
-        xmlManager = beanFactory.getBean("xmlManager", XmlManager.class);
+        xmlManager = beanFactory.getBean(XmlManager.class);
     }
 
     @Override
@@ -110,8 +110,8 @@ public class RootServlet extends HttpServlet {
         final TransactionAction transactionAction = extractParamTransactionAction(req);
         final Long transactionId = extractParamLong(req, PARAM_TRANSACTION_ID);
         if((transactionAction != null) && (transactionId != null)) {
-            final Optional<Transaction> transactionOptional = transactionDao.get(transactionId);
-            transactionOptional.ifPresent(transaction -> {
+            final Transaction transaction = transactionRepository.findOne(transactionId);
+            if(transaction != null) {
                 switch(transactionAction) {
                     case MOVE_EARLIER:
                     case MOVE_LATER:
@@ -122,7 +122,7 @@ public class RootServlet extends HttpServlet {
                         transactionService.remove(transaction);
                         break;
                 }
-            });
+            }
             Utils.httpRedirect(resp, req.getContextPath() + "/");
             return;
         }
@@ -135,21 +135,16 @@ public class RootServlet extends HttpServlet {
     private AccountingView buildAccountingView() {
         final AccountingView accountingView = new AccountingView();
 
-        final Map<Long, Account> accounts = accountDao.getAll();
-        final Map<Long, Category> categories = categoryDao.getAll();
-        final Map<Long, Currency> currencies = currencyDao.getAll();
-        final Config config = configDao.get();
+        final Config config = configService.get();
 
-        final List<AccountView> accountViews = accounts
-                .values()
-                .stream()
-                .map(account -> modelViewMapper.mapAccount(account, currencies))
+        final Iterable<Account> accounts = accountRepository.findAll();
+        final List<AccountView> accountViews = StreamSupport.stream(accounts.spliterator(), false)
+                .map(modelViewMapper::mapAccount)
                 .collect(Collectors.toList());
         accountingView.setAccounts(accountViews);
 
-        final List<CategoryView> categoryViews = categories
-                .values()
-                .stream()
+        final Iterable<Category> categories = categoryRepository.findAll();
+        final List<CategoryView> categoryViews = StreamSupport.stream(categories.spliterator(), false)
                 .map(modelViewMapper::mapCategory)
                 .collect(Collectors.toList());
         accountingView.setCategories(categoryViews);
@@ -160,10 +155,10 @@ public class RootServlet extends HttpServlet {
         calendar.add(Calendar.MONTH, 1);
         final long to = calendar.getTimeInMillis();
 
-        final Map<Long, Double> accountsRunningTotal = accounts.keySet().stream()
+        final Map<Long, Double> accountsRunningTotal = StreamSupport.stream(accounts.spliterator(), false)
                 .collect(Collectors.toMap(
-                        Function.identity(),
-                        accountId -> 0.0,
+                        Account::getId,
+                        account -> 0.0,
                         Utils.obtainNoDuplicatesFunction(),
                         HashMap::new // allowing null key for total
                 ));
@@ -173,27 +168,25 @@ public class RootServlet extends HttpServlet {
         final Map<Long, Map<Long, Double>> summary = new LinkedHashMap<>();
         accountingView.setAccountsRunningTotalBefore(null);
         accountingView.setAccountsRunningTotalAfter(null);
-        transactionDao.getAll()
+        transactionRepository.findAll()
                 .forEach(transaction -> {
-                    final Collection<Operation> operations = operationDao.get(transaction.getId());
-
                     if((transaction.getTime() >= from) && (accountingView.getAccountsRunningTotalBefore() == null)) {
                         final RunningTotalView runningTotalView = generateRunningTotalView(accountsRunningTotal);
                         accountingView.setAccountsRunningTotalBefore(runningTotalView);
                     }
 
-                    final double total = operations
+                    final double total = transaction.getOperations()
                             .stream()
                             .mapToDouble(operation -> {
-                                final Account account = accounts.computeIfAbsent(operation.getAccountId(), Utils.obtainNotFoundFunction("account"));
+                                final Account account = operation.getAccount();
                                 accountsRunningTotal.compute(account.getId(), (id, amount) -> amount + operation.getAmount());
-                                return convert(currencies, account.getCurrencyId(), config.getCurrencyIdDefault(), operation.getAmount());
+                                return convert(account.getCurrency(), config.getCurrencyDefault(), operation.getAmount());
                             })
                             .sum();
                     accountsRunningTotal.compute(null, (id, amount) -> amount + total);
 
                     if((transaction.getTime() >= from) && (transaction.getTime() <= to)) {
-                        final TransactionView transactionView = modelViewMapper.mapTransaction(transaction, operations, accounts, categories);
+                        final TransactionView transactionView = modelViewMapper.mapTransaction(transaction);
                         transactionView.setTotal(total);
                         transactionViews.add(transactionView);
                     }
@@ -205,17 +198,15 @@ public class RootServlet extends HttpServlet {
 
                     final Map<Long, Double> summaryItems = summary.computeIfAbsent(
                             calculateMonthStartTime(transaction.getTime()),
-                            time -> categories
-                                    .keySet()
-                                    .stream()
+                            time -> StreamSupport.stream(categories.spliterator(), false)
                                     .collect(Collectors.toMap(
-                                            Function.identity(),
-                                            id -> 0.0,
+                                            Category::getId,
+                                            category -> 0.0,
                                             Utils.obtainNoDuplicatesFunction(),
                                             () -> new LinkedHashMap<>()
                                     ))
                     );
-                    summaryItems.compute(transaction.getCategoryId(), (id, amount) -> amount + total);
+                    summaryItems.compute(transaction.getCategory().getId(), (id, amount) -> amount + total);
                 });
         if(accountingView.getAccountsRunningTotalAfter() == null) {
             final RunningTotalView runningTotalView = generateRunningTotalView(accountsRunningTotal);
@@ -235,7 +226,7 @@ public class RootServlet extends HttpServlet {
                             .stream()
                             .map(itemEntry -> {
                                 final SummaryItemView summaryItemView = new SummaryItemView();
-                                summaryItemView.setName(categories.get(itemEntry.getKey()).getName());
+                                summaryItemView.setName(categoryRepository.findOne(itemEntry.getKey()).getName());
                                 summaryItemView.setAmount(itemEntry.getValue());
                                 return summaryItemView;
                             })
@@ -260,12 +251,9 @@ public class RootServlet extends HttpServlet {
         return calendar.getTimeInMillis();
     }
 
-    private double convert(final Map<Long, Currency> currencies, final long from, final long to, final double amount) {
-        final Currency currencyFrom = currencies.computeIfAbsent(from, Utils.obtainNotFoundFunction("currency"));
-        final Currency currencyTo = currencies.computeIfAbsent(to, Utils.obtainNotFoundFunction("currency"));
-
-        final double amountBase = amount * currencyFrom.getValue();
-        return amountBase / currencyTo.getValue();
+    private double convert(final Currency from, final Currency to, final double amount) {
+        final double amountBase = amount * from.getValue();
+        return amountBase / to.getValue();
     }
 
     private RunningTotalView generateRunningTotalView(final Map<Long, Double> totals) {
@@ -310,24 +298,23 @@ public class RootServlet extends HttpServlet {
             return;
         }
 
-        final Map<Long, Category> categories = categoryDao.getAll();
-        if(!categories.containsKey(categoryId)) {
+        final Category category = categoryRepository.findOne(categoryId);
+        if(category == null) {
             return;
         }
 
         final String comment = req.getParameter(PARAM_COMMENT);
 
         final Map<Long, Double> operations = new HashMap<>();
-        accountDao.getAll()
-                .keySet()
-                .forEach(accountId -> {
-                    final Double amount = extractParamAccountValue(req, accountId);
+        accountRepository.findAll()
+                .forEach(account -> {
+                    final Double amount = extractParamAccountValue(req, account.getId());
                     if(amount != null) {
-                        operations.put(accountId, amount);
+                        operations.put(account.getId(), amount);
                     }
                 });
 
-        transactionService.add(time, categoryId, comment, operations);
+        transactionService.add(time, category, comment, operations);
     }
 
     private TransactionAction extractParamTransactionAction(final HttpServletRequest req) {

@@ -1,24 +1,30 @@
 package com.lonebytesoft.hamster.accounting;
 
-import com.lonebytesoft.hamster.accounting.dao.AccountDao;
-import com.lonebytesoft.hamster.accounting.dao.CategoryDao;
-import com.lonebytesoft.hamster.accounting.dao.ConfigDao;
-import com.lonebytesoft.hamster.accounting.dao.CurrencyDao;
-import com.lonebytesoft.hamster.accounting.dao.OperationDao;
-import com.lonebytesoft.hamster.accounting.dao.TransactionDao;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Config;
 import com.lonebytesoft.hamster.accounting.model.Currency;
-import com.lonebytesoft.hamster.accounting.model.Operation;
-import com.lonebytesoft.hamster.accounting.model.Transaction;
+import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
+import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
+import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
+import com.lonebytesoft.hamster.accounting.service.ConfigService;
+import com.lonebytesoft.hamster.accounting.service.TransactionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+@Component
+@Profile("test")
 public class TestDataPopulator {
 
     private static final Logger logger = LoggerFactory.getLogger(TestDataPopulator.class);
@@ -26,27 +32,32 @@ public class TestDataPopulator {
     private static final char[] ALPHABET_UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
     private static final char[] ALPHABET_LOWERCASE = "abcdefghijklmnopqrstuvwxyz".toCharArray();
 
-    private final AccountDao accountDao;
-    private final CategoryDao categoryDao;
-    private final CurrencyDao currencyDao;
-    private final OperationDao operationDao;
-    private final TransactionDao transactionDao;
-    private final ConfigDao configDao;
+    private final AccountRepository accountRepository;
+    private final CategoryRepository categoryRepository;
+    private final CurrencyRepository currencyRepository;
+
+    private final TransactionService transactionService;
+    private final ConfigService configService;
 
     private final int categoryCount;
     private final int currencyCount;
     private final int accountCount;
     private final int transactionCount;
 
-    public TestDataPopulator(final AccountDao accountDao, final CategoryDao categoryDao, final CurrencyDao currencyDao,
-                             final OperationDao operationDao, final TransactionDao transactionDao, final ConfigDao configDao,
-                             final int categoryCount, final int currencyCount, final int accountCount, final int transactionCount) {
-        this.accountDao = accountDao;
-        this.categoryDao = categoryDao;
-        this.currencyDao = currencyDao;
-        this.operationDao = operationDao;
-        this.transactionDao = transactionDao;
-        this.configDao = configDao;
+    @Autowired
+    public TestDataPopulator(final AccountRepository accountRepository, final CategoryRepository categoryRepository,
+                             final CurrencyRepository currencyRepository,
+                             final TransactionService transactionService, final ConfigService configService,
+                             @Value("${accounting.test.populator.count.category}") final int categoryCount,
+                             @Value("${accounting.test.populator.count.currency}") final int currencyCount,
+                             @Value("${accounting.test.populator.count.account}") final int accountCount,
+                             @Value("${accounting.test.populator.count.transaction}") final int transactionCount) {
+        this.accountRepository = accountRepository;
+        this.categoryRepository = categoryRepository;
+        this.currencyRepository = currencyRepository;
+
+        this.transactionService = transactionService;
+        this.configService = configService;
 
         this.categoryCount = categoryCount;
         this.currencyCount = currencyCount;
@@ -54,14 +65,15 @@ public class TestDataPopulator {
         this.transactionCount = transactionCount;
     }
 
+    @PostConstruct
     public void populate() {
         logger.info("Populating test data");
 
-        final List<Long> categoryIds = populateCategory(categoryCount);
-        final List<Long> currencyIds = populateCurrency(currencyCount);
-        final List<Long> accountIds = populateAccount(accountCount, currencyIds);
+        final List<Category> categories = populateCategory(categoryCount);
+        final List<Currency> currencies = populateCurrency(currencyCount);
+        final List<Account> accounts = populateAccount(accountCount, currencies);
 
-        populateConfig(currencyIds);
+        populateConfig(currencies);
 
         final long to = System.currentTimeMillis();
 
@@ -70,36 +82,36 @@ public class TestDataPopulator {
         calendar.add(Calendar.YEAR, -1);
         final long from = calendar.getTimeInMillis();
 
-        populateTransactionOperation(transactionCount, categoryIds, accountIds, from, to);
+        populateTransactionOperation(transactionCount, categories, accounts, from, to);
     }
 
-    private void populateConfig(final List<Long> currencyIds) {
+    private void populateConfig(final List<Currency> currencies) {
         final Config config = new Config();
 
-        config.setCurrencyIdDefault(currencyIds.get(0));
+        config.setCurrencyDefault(currencies.get(0));
 
-        configDao.save(config);
+        configService.save(config);
     }
 
-    private List<Long> populateCategory(final int count) {
-        final List<Long> ids = new ArrayList<>(count);
+    private List<Category> populateCategory(final int count) {
+        final List<Category> categories = new ArrayList<>(count);
         int ordering = 0;
         for(int i = 0; i < count; i++) {
             final Category category = new Category();
 
-            category.setName(generateRandomWords(1, 3,4, 11));
+            category.setName(generateRandomWords(1, 3, 4, 11));
 
             ordering += random(0, 3);
             category.setOrdering(ordering);
 
-            categoryDao.save(category);
-            ids.add(category.getId());
+            categoryRepository.save(category);
+            categories.add(category);
         }
-        return ids;
+        return categories;
     }
 
-    private List<Long> populateCurrency(final int count) {
-        final List<Long> ids = new ArrayList<>(count);
+    private List<Currency> populateCurrency(final int count) {
+        final List<Currency> currencies = new ArrayList<>(count);
         for(int i = 0; i < count; i++) {
             final Currency currency = new Currency();
 
@@ -108,48 +120,45 @@ public class TestDataPopulator {
             currency.setSymbol(currency.getCode().substring(0, 2));
             currency.setValue(random(1e-3, 1e4));
 
-            currencyDao.save(currency);
-            ids.add(currency.getId());
+            currencyRepository.save(currency);
+            currencies.add(currency);
         }
-        return ids;
+        return currencies;
     }
 
-    private List<Long> populateAccount(final int count, final List<Long> currencyIds) {
-        final List<Long> ids = new ArrayList<>(count);
+    private List<Account> populateAccount(final int count, final List<Currency> currencies) {
+        final List<Account> accounts = new ArrayList<>(count);
         for(int i = 0; i < count; i++) {
             final Account account = new Account();
 
             account.setName(generateRandomWords(1, 3, 4, 11));
-            account.setCurrencyId(currencyIds.get(random(0, currencyIds.size())));
+            account.setCurrency(currencies.get(random(0, currencies.size())));
 
-            accountDao.save(account);
-            ids.add(account.getId());
+            accountRepository.save(account);
+            accounts.add(account);
         }
-        return ids;
+        return accounts;
     }
 
-    private void populateTransactionOperation(final int count, final List<Long> categoryIds, final List<Long> accountIds,
+    private void populateTransactionOperation(final int count, final List<Category> categories, final List<Account> accounts,
                                               final long timeFrom, final long timeTo) {
         for(int i = 0; i < count; i++) {
-            final Transaction transaction = new Transaction();
-
-            transaction.setTime(random(timeFrom, timeTo));
-            transaction.setCategoryId(categoryIds.get(random(0, categoryIds.size())));
-            transaction.setComment(generateRandomWords(1, 6, 4, 16));
-
-            transactionDao.save(transaction);
-
-            final int countOperations = random(1, accountIds.size() + 1);
-            final List<Long> freeAccountIds = new ArrayList<>(accountIds);
+            final int countOperations = random(1, accounts.size() + 1);
+            final List<Account> freeAccounts = new ArrayList<>(accounts);
+            final Map<Long, Double> operations = new HashMap<>();
             for(int j = 0; j < countOperations; j++) {
-                final Operation operation = new Operation();
-
-                operation.setTransactionId(transaction.getId());
-                operation.setAccountId(freeAccountIds.remove(random(0, freeAccountIds.size())));
-                operation.setAmount(random(-1e5, 1e5));
-
-                operationDao.save(operation);
+                operations.put(
+                        freeAccounts.remove(random(0, freeAccounts.size())).getId(),
+                        random(-1e5, 1e5)
+                );
             }
+
+            transactionService.addAtExactTime(
+                    random(timeFrom, timeTo),
+                    categories.get(random(0, categories.size())),
+                    generateRandomWords(1, 6, 4, 16),
+                    operations
+            );
         }
     }
 

@@ -35,7 +35,7 @@ public class DateParser {
             Utils.setCalendarDayStart(calendar);
             return calendar.getTimeInMillis();
         } else {
-            logger.debug("Could not parse input '{}' (formatted '{}')");
+            logger.trace("Could not parse input '{}' (formatted '{}')", input, toParse);
             return null;
         }
     }

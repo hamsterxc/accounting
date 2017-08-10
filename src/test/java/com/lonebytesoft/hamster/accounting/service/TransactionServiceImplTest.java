@@ -1,19 +1,24 @@
 package com.lonebytesoft.hamster.accounting.service;
 
-import com.lonebytesoft.hamster.accounting.dao.OperationDao;
-import com.lonebytesoft.hamster.accounting.dao.OperationDaoImpl;
-import com.lonebytesoft.hamster.accounting.dao.TransactionDao;
-import com.lonebytesoft.hamster.accounting.dao.TransactionDaoImpl;
+import com.lonebytesoft.hamster.accounting.model.Account;
+import com.lonebytesoft.hamster.accounting.model.Category;
+import com.lonebytesoft.hamster.accounting.model.Currency;
 import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
-import org.hibernate.SessionFactory;
-import org.hibernate.cfg.Configuration;
-import org.junit.After;
+import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
+import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
+import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
+import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -22,64 +27,100 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("classpath:/spring-test.xml")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class TransactionServiceImplTest {
 
     private static final Logger logger = LoggerFactory.getLogger(TransactionServiceImplTest.class);
 
-    private static final String HIBERNATE_CONFIG = "hibernate-test.cfg.xml";
+    @Autowired
+    private AccountRepository accountRepository;
 
-    private SessionFactory sessionFactory;
-    private TransactionDao transactionDao;
-    private OperationDao operationDao;
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private CurrencyRepository currencyRepository;
+
+    @Autowired
+    private TransactionRepository transactionRepository;
+
+    @Autowired
     private TransactionService transactionService;
 
+    private int unique = 0;
     private List<Long> ids = new ArrayList<>();
     private Map<Long, Long> times = new HashMap<>();
+    private Map<Long, Category> categories = new HashMap<>();
+    private Map<Long, String> comments = new HashMap<>();
+    private Map<Long, Map<Long, Double>> operations = new HashMap<>();
 
     @Before
     public void before() {
-        final Configuration configuration = new Configuration();
-        configuration.configure(HIBERNATE_CONFIG);
-        sessionFactory = configuration.buildSessionFactory();
-
-        transactionDao = new TransactionDaoImpl(sessionFactory);
-        operationDao = new OperationDaoImpl(sessionFactory);
-        transactionService = new TransactionServiceImpl(transactionDao, operationDao);
-
         final Calendar calendar = Calendar.getInstance();
         calendar.set(2000, Calendar.JUNE, 15, 10, 0, 0);
         calendar.set(Calendar.MILLISECOND, 0);
 
         long time = calendar.getTimeInMillis(); // June 15th, 10:00 AM
-        long id = transactionService.addAtExactTime(time, 1, "first", buildOperationsMap(1, 20, 3, 40));
-        ids.add(id);
-        times.put(id, time);
+        createTransaction(time, "first", 2);
 
         time = addTime(time, 0, 8); // June 15th, 6:00 PM
-        id = transactionService.addAtExactTime(time, 2, "second second", buildOperationsMap(3, 41, 5, 60, 7, 80));
-        ids.add(id);
-        times.put(id, time);
+        createTransaction(time, "second second", 3);
 
         time = addTime(time, 1, -2); // June 16th, 4:00 PM
-        id = transactionService.addAtExactTime(time, 3, "third", buildOperationsMap(7, 81));
-        ids.add(id);
-        times.put(id, time);
+        createTransaction(time, "third", 1);
 
         time = addTime(time, 2, 4); // June 18th, 8:00 PM
-        id = transactionService.addAtExactTime(time, 4, "fourth fourth fourth", buildOperationsMap(7, 82, 9, 100));
-        ids.add(id);
-        times.put(id, time);
+        createTransaction(time, "fourth fourth fourth", 2);
     }
 
-    private Map<Long, Double> buildOperationsMap(final double... values) {
-        final Map<Long, Double> operationsMap = new HashMap<>();
-        for(int i = 0; i < values.length / 2; i++) {
-            operationsMap.put((long) values[i * 2], values[i * 2 + 1]);
+    private Category createCategory() {
+        final Category category = new Category();
+        category.setName(String.valueOf(unique++));
+        category.setOrdering(unique++);
+        return categoryRepository.save(category);
+    }
+
+    private Currency createCurrency() {
+        final Currency currency = new Currency();
+        currency.setCode(String.valueOf(unique++));
+        currency.setName(String.valueOf(unique++));
+        currency.setSymbol(String.valueOf(unique++));
+        currency.setValue(unique++);
+        return currencyRepository.save(currency);
+    }
+
+    private Account createAccount() {
+        final Account account = new Account();
+        account.setName(String.valueOf(unique++));
+        account.setCurrency(createCurrency());
+        return accountRepository.save(account);
+    }
+
+    private Map<Long, Double> createOperations(final int count) {
+        final Map<Long, Double> operations = new HashMap<>(count);
+        for(int i = 0; i < count; i++) {
+            final Account account = createAccount();
+            operations.put(account.getId(), (i + 1.0) * 10.0);
         }
-        return operationsMap;
+        return operations;
+    }
+
+    private void createTransaction(final long time, final String comment, final int operationsCount) {
+        final Category category = createCategory();
+        final Map<Long, Double> operationsMap = createOperations(operationsCount);
+
+        final Transaction transaction = transactionService.addAtExactTime(time, category, comment, operationsMap);
+        final long id = transaction.getId();
+
+        ids.add(id);
+        times.put(id, time);
+        categories.put(id, category);
+        comments.put(id, comment);
+        operations.put(id, operationsMap);
     }
 
     private long addTime(final long time, final int days, final int hours) {
@@ -94,125 +135,125 @@ public class TransactionServiceImplTest {
     public void testMoveEarlierNoClosest() {
         performTimeAction(ids.get(0), true);
 
-        Assert.assertEquals(4, transactionDao.getAll().size());
+        assertTotalCount(4);
 
         long time = times.get(ids.get(0));
         time = addTime(time, -1, 2); // June 14th, 12:00 PM
-        assertTransactionData(ids.get(0), time, 1, "first", 1, 20, 3, 40);
+        assertTransactionData(0, time);
 
-        assertTransactionData(ids.get(1), times.get(ids.get(1)), 2, "second second", 3, 41, 5, 60, 7, 80);
-        assertTransactionData(ids.get(2), times.get(ids.get(2)), 3, "third", 7, 81);
-        assertTransactionData(ids.get(3), times.get(ids.get(3)), 4, "fourth fourth fourth", 7, 82, 9, 100);
+        assertTransactionData(1, times.get(ids.get(1)));
+        assertTransactionData(2, times.get(ids.get(2)));
+        assertTransactionData(3, times.get(ids.get(3)));
     }
 
     @Test
     public void testMoveEarlierSameDayClosest() {
         performTimeAction(ids.get(1), true);
 
-        Assert.assertEquals(4, transactionDao.getAll().size());
+        assertTotalCount(4);
 
-        assertTransactionData(ids.get(0), times.get(ids.get(1)), 1, "first", 1, 20, 3, 40);
-        assertTransactionData(ids.get(1), times.get(ids.get(0)), 2, "second second", 3, 41, 5, 60, 7, 80);
+        assertTransactionData(0, times.get(ids.get(1)));
+        assertTransactionData(1, times.get(ids.get(0)));
 
-        assertTransactionData(ids.get(2), times.get(ids.get(2)), 3, "third", 7, 81);
-        assertTransactionData(ids.get(3), times.get(ids.get(3)), 4, "fourth fourth fourth", 7, 82, 9, 100);
+        assertTransactionData(2, times.get(ids.get(2)));
+        assertTransactionData(3, times.get(ids.get(3)));
     }
 
     @Test
     public void testMoveEarlierAdjacentDayClosest() {
         performTimeAction(ids.get(2), true);
 
-        Assert.assertEquals(4, transactionDao.getAll().size());
+        assertTotalCount(4);
 
-        assertTransactionData(ids.get(0), times.get(ids.get(0)), 1, "first", 1, 20, 3, 40);
-        assertTransactionData(ids.get(1), times.get(ids.get(1)), 2, "second second", 3, 41, 5, 60, 7, 80);
+        assertTransactionData(0, times.get(ids.get(0)));
+        assertTransactionData(1, times.get(ids.get(1)));
 
         long time = times.get(ids.get(2));
         time = addTime(time, 0, -19); // June 15th, 9 PM
-        assertTransactionData(ids.get(2), time, 3, "third", 7, 81);
+        assertTransactionData(2, time);
 
-        assertTransactionData(ids.get(3), times.get(ids.get(3)), 4, "fourth fourth fourth", 7, 82, 9, 100);
+        assertTransactionData(3, times.get(ids.get(3)));
     }
 
     @Test
     public void testMoveEarlierFarClosest() {
         performTimeAction(ids.get(3), true);
 
-        Assert.assertEquals(4, transactionDao.getAll().size());
+        assertTotalCount(4);
 
-        assertTransactionData(ids.get(0), times.get(ids.get(0)), 1, "first", 1, 20, 3, 40);
-        assertTransactionData(ids.get(1), times.get(ids.get(1)), 2, "second second", 3, 41, 5, 60, 7, 80);
-        assertTransactionData(ids.get(2), times.get(ids.get(2)), 3, "third", 7, 81);
+        assertTransactionData(0, times.get(ids.get(0)));
+        assertTransactionData(1, times.get(ids.get(1)));
+        assertTransactionData(2, times.get(ids.get(2)));
 
         long time = times.get(ids.get(3));
         time = addTime(time, -1, -8); // June 17th, 12 PM
-        assertTransactionData(ids.get(3), time, 4, "fourth fourth fourth", 7, 82, 9, 100);
+        assertTransactionData(3, time);
     }
 
     @Test
     public void testMoveLaterNoClosest() {
         performTimeAction(ids.get(3), false);
 
-        Assert.assertEquals(4, transactionDao.getAll().size());
+        assertTotalCount(4);
 
-        assertTransactionData(ids.get(0), times.get(ids.get(0)), 1, "first", 1, 20, 3, 40);
-        assertTransactionData(ids.get(1), times.get(ids.get(1)), 2, "second second", 3, 41, 5, 60, 7, 80);
-        assertTransactionData(ids.get(2), times.get(ids.get(2)), 3, "third", 7, 81);
+        assertTransactionData(0, times.get(ids.get(0)));
+        assertTransactionData(1, times.get(ids.get(1)));
+        assertTransactionData(2, times.get(ids.get(2)));
 
         long time = times.get(ids.get(3));
         time = addTime(time, 0, 16); // June 19th, 12:00 PM
-        assertTransactionData(ids.get(3), time, 4, "fourth fourth fourth", 7, 82, 9, 100);
+        assertTransactionData(3, time);
     }
 
     @Test
     public void testMoveLaterSameDayClosest() {
         performTimeAction(ids.get(0), false);
 
-        Assert.assertEquals(4, transactionDao.getAll().size());
+        assertTotalCount(4);
 
-        assertTransactionData(ids.get(0), times.get(ids.get(1)), 1, "first", 1, 20, 3, 40);
-        assertTransactionData(ids.get(1), times.get(ids.get(0)), 2, "second second", 3, 41, 5, 60, 7, 80);
+        assertTransactionData(0, times.get(ids.get(1)));
+        assertTransactionData(1, times.get(ids.get(0)));
 
-        assertTransactionData(ids.get(2), times.get(ids.get(2)), 3, "third", 7, 81);
-        assertTransactionData(ids.get(3), times.get(ids.get(3)), 4, "fourth fourth fourth", 7, 82, 9, 100);
+        assertTransactionData(2, times.get(ids.get(2)));
+        assertTransactionData(3, times.get(ids.get(3)));
     }
 
     @Test
     public void testMoveLaterAdjacentDayClosest() {
         performTimeAction(ids.get(1), false);
 
-        Assert.assertEquals(4, transactionDao.getAll().size());
+        assertTotalCount(4);
 
-        assertTransactionData(ids.get(0), times.get(ids.get(0)), 1, "first", 1, 20, 3, 40);
+        assertTransactionData(0, times.get(ids.get(0)));
 
         long time = times.get(ids.get(1));
         time = addTime(time, 0, 14); // June 16th, 8 AM
-        assertTransactionData(ids.get(1), time, 2, "second second", 3, 41, 5, 60, 7, 80);
+        assertTransactionData(1, time);
 
-        assertTransactionData(ids.get(2), times.get(ids.get(2)), 3, "third", 7, 81);
-        assertTransactionData(ids.get(3), times.get(ids.get(3)), 4, "fourth fourth fourth", 7, 82, 9, 100);
+        assertTransactionData(2, times.get(ids.get(2)));
+        assertTransactionData(3, times.get(ids.get(3)));
     }
 
     @Test
     public void testMoveLaterFarClosest() {
         performTimeAction(ids.get(2), false);
 
-        Assert.assertEquals(4, transactionDao.getAll().size());
+        assertTotalCount(4);
 
-        assertTransactionData(ids.get(0), times.get(ids.get(0)), 1, "first", 1, 20, 3, 40);
-        assertTransactionData(ids.get(1), times.get(ids.get(1)), 2, "second second", 3, 41, 5, 60, 7, 80);
+        assertTransactionData(0, times.get(ids.get(0)));
+        assertTransactionData(1, times.get(ids.get(1)));
 
         long time = times.get(ids.get(2));
         time = addTime(time, 0, 20); // June 17th, 12 PM
-        assertTransactionData(ids.get(2), time, 3, "third", 7, 81);
+        assertTransactionData(2, time);
 
-        assertTransactionData(ids.get(3), times.get(ids.get(3)), 4, "fourth fourth fourth", 7, 82, 9, 100);
+        assertTransactionData(3, times.get(ids.get(3)));
     }
 
     private Transaction getTransaction(final long id) {
-        final Optional<Transaction> transactionOptional = transactionDao.get(id);
-        Assert.assertTrue(transactionOptional.isPresent());
-        return transactionOptional.get();
+        final Transaction transaction = transactionRepository.findOne(id);
+        Assert.assertNotNull(transaction);
+        return transaction;
     }
 
     private void performTimeAction(final long id, final boolean moveEarlier) {
@@ -221,8 +262,17 @@ public class TransactionServiceImplTest {
         transactionService.performTimeAction(transaction, action);
     }
 
-    private void assertTransactionData(final long id, final long time, final long categoryId, final String comment,
-                                       final double... operationValues) {
+    private void assertTotalCount(final int expected) {
+        int count = 0;
+        for(final Transaction transaction : transactionRepository.findAll()) {
+            count++;
+        }
+
+        Assert.assertEquals(expected, count);
+    }
+
+    private void assertTransactionData(final int index, final long time) {
+        final long id = ids.get(index);
         final Transaction transaction = getTransaction(id);
 
         Assert.assertEquals(id, (long) transaction.getId());
@@ -230,30 +280,17 @@ public class TransactionServiceImplTest {
         logger.debug("Comparing dates: expected {}, actual {}", new Date(time), new Date(transaction.getTime()));
         Assert.assertEquals(time, transaction.getTime());
 
-        Assert.assertEquals(categoryId, transaction.getCategoryId());
-        Assert.assertEquals(comment, transaction.getComment());
+        Assert.assertEquals(categories.get(id).getId(), transaction.getCategory().getId());
+        Assert.assertEquals(comments.get(id), transaction.getComment());
 
-        final Collection<Operation> operations = operationDao.get(id);
-        operations.forEach(operation -> Assert.assertEquals(id, operation.getTransactionId()));
+        final Collection<Operation> operations = transaction.getOperations();
+        operations.forEach(operation -> Assert.assertEquals(id, (long) operation.getTransaction().getId()));
         final Map<Long, Double> values = operations.stream()
                 .collect(Collectors.toMap(
-                        Operation::getAccountId,
+                        operation -> operation.getAccount().getId(),
                         Operation::getAmount
                 ));
-        for(int i = 0; i < operationValues.length / 2; i++) {
-            final long accountId = (long) operationValues[i * 2];
-            final double amount = operationValues[i * 2 + 1];
-
-            Assert.assertTrue(values.containsKey(accountId));
-            Assert.assertEquals((Double) amount, values.get(accountId));
-
-            values.remove(accountId);
-        }
-    }
-
-    @After
-    public void after() {
-        sessionFactory.close();
+        Assert.assertEquals(this.operations.get(id), values);
     }
 
 }

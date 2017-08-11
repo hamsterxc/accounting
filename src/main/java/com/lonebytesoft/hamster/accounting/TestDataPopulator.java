@@ -101,7 +101,7 @@ public class TestDataPopulator {
 
             category.setName(generateRandomWords(1, 3, 4, 11));
 
-            ordering += random(0, 3);
+            ordering += random(-1, 2);
             category.setOrdering(ordering);
 
             categoryRepository.save(category);

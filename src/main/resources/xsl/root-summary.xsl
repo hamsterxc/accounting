@@ -8,8 +8,8 @@
                 <th colspan="2">
                     <xsl:value-of select="XslFormatHelper:formatDate($format-helper, time, $summary-date-format)"/>
                 </th>
-                <xsl:apply-templates select="items/item" mode="summary-item-row"/>
             </tr>
+            <xsl:apply-templates select="items/item" mode="summary-item-row"/>
         </table>
     </xsl:template>
 

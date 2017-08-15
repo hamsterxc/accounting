@@ -9,11 +9,11 @@ import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
 
 @Entity
-class Operation : HasId<Long> {
+class Operation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    override var id: Long = 0
+    var id: Long = 0
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "transaction_id", nullable = false)

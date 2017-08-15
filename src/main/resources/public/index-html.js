@@ -16,7 +16,10 @@ function buildMainHeader(accounts, currencies) {
 
 function populateMainAdd(accounts, categories) {
     $('#main-add').html(buildMainAdd(accounts, categories));
-    $('#main-add-form').submit(function(event) {
+
+    var form = $('#main-add-form');
+    form.off('submit');
+    form.submit(function(event) {
         event.preventDefault();
 
         const accountPrefix = 'account';

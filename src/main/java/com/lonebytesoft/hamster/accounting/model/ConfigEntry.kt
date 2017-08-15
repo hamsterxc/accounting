@@ -7,16 +7,13 @@ import javax.persistence.Table
 
 @Entity
 @Table(name = "config")
-class ConfigEntry : HasId<String> {
+class ConfigEntry {
 
     @Id
     var key: String = ""
 
     @Column
     var value: String? = null
-
-    override val id: String
-        get() = key
 
     override fun toString(): String = "ConfigEntry(key='$key', value='$value')"
 

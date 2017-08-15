@@ -19,7 +19,6 @@ import com.lonebytesoft.hamster.accounting.service.ConfigService;
 import com.lonebytesoft.hamster.accounting.service.TransactionAction;
 import com.lonebytesoft.hamster.accounting.service.TransactionService;
 import com.lonebytesoft.hamster.accounting.util.DateParser;
-import com.lonebytesoft.hamster.accounting.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 @RestController
 @RequestMapping("/transaction")
@@ -79,24 +77,18 @@ public class TransactionController {
                                        @RequestParam(name = "to", required = false) final Long paramTo) {
         final long to = calculateUpperBound(paramTo);
 
-        final Map<Long, Double> accountsRunningTotal = StreamSupport.stream(accountRepository.findAll().spliterator(), false)
-                .collect(Collectors.toMap(
-                        Account::getId,
-                        account -> 0.0,
-                        Utils.obtainNoDuplicatesFunction(),
-                        HashMap::new // allowing null key for total
-                ));
-        accountsRunningTotal.put(null, 0.0);
-
+        final Map<Long, Double> accountsRunningTotal = new HashMap<>();
         final Config config = configService.get();
         transactionRepository.findAllBetweenTime(from, to)
                 .forEach(transaction -> {
                     transaction.getOperations()
                             .forEach(operation -> {
                                 final Account account = operation.getAccount();
-                                accountsRunningTotal.compute(account.getId(), (id, amount) -> amount + operation.getAmount());
+                                accountsRunningTotal.compute(account.getId(),
+                                        (id, amount) -> amount == null ? operation.getAmount() : amount + operation.getAmount());
                             });
-                    accountsRunningTotal.compute(null, (id, amount) -> amount + calculateTotal(transaction, config));
+                    final double total = calculateTotal(transaction, config);
+                    accountsRunningTotal.compute(null, (id, amount) -> amount == null ? total : amount + total);
                 });
 
         final Double total = accountsRunningTotal.remove(null);

@@ -13,11 +13,11 @@ import javax.persistence.ManyToOne
 import javax.persistence.OneToMany
 
 @Entity
-class Transaction : HasId<Long> {
+class Transaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    override var id: Long = 0
+    var id: Long = 0
 
     @Column(nullable = false)
     var time: Long = 0

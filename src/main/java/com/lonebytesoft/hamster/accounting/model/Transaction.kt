@@ -27,7 +27,7 @@ class Transaction : HasId<Long> {
     lateinit var category: Category
 
     @Column
-    var comment: String? = null
+    var comment: String = ""
 
     @OneToMany(cascade = arrayOf(CascadeType.ALL), mappedBy = "transaction", orphanRemoval = true, fetch = FetchType.EAGER)
     lateinit var operations: Collection<Operation>

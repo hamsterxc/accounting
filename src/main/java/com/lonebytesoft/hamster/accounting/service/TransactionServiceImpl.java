@@ -4,6 +4,7 @@ import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
+import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.util.Utils;
 import org.slf4j.Logger;
@@ -23,10 +24,12 @@ public class TransactionServiceImpl implements TransactionService {
     private static final Logger logger = LoggerFactory.getLogger(TransactionServiceImpl.class);
 
     private final TransactionRepository transactionRepository;
+    private final AccountRepository accountRepository;
 
     @Autowired
-    public TransactionServiceImpl(final TransactionRepository transactionRepository) {
+    public TransactionServiceImpl(final TransactionRepository transactionRepository, final AccountRepository accountRepository) {
         this.transactionRepository = transactionRepository;
+        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -65,6 +68,8 @@ public class TransactionServiceImpl implements TransactionService {
         closest.setTime(transactionTime);
         transaction.setTime(closestTime);
 
+        logger.debug("Performing time action, swap time: {}, {}", transaction, closest);
+
         transactionRepository.save(transaction);
         transactionRepository.save(closest);
     }
@@ -81,6 +86,7 @@ public class TransactionServiceImpl implements TransactionService {
         final long diff = Math.abs(threshold - closestTime);
         if(diff > 1) {
             transaction.setTime(Math.min(threshold, closestTime) + diff / 2);
+            logger.debug("Performing time action, move in adjacent days: {}", transaction);
             transactionRepository.save(transaction);
         } else {
             if(action == TransactionAction.MOVE_EARLIER) {
@@ -108,6 +114,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         transaction.setTime(start + (end - start) / 2);
+        logger.debug("Performing time action, move lone: {}, {}", transaction);
         transactionRepository.save(transaction);
     }
 
@@ -179,12 +186,20 @@ public class TransactionServiceImpl implements TransactionService {
                 })
                 .collect(Collectors.toList()));
 
-        transactionRepository.save(transaction);
-        return transaction;
+        final Transaction saved = transactionRepository.save(transaction);
+
+        // todo: hack: deeply nested entities are not lazily loaded
+        for(final Operation operation : saved.getOperations()) {
+            operation.setAccount(accountRepository.findOne(operation.getAccount().getId()));
+        }
+
+        logger.debug("Saved transaction {}", saved);
+        return saved;
     }
 
     @Override
     public void remove(Transaction transaction) {
+        logger.debug("Deleting transaction {}", transaction);
         transactionRepository.delete(transaction);
     }
 

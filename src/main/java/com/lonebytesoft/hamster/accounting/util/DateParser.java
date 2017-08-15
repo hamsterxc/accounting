@@ -26,6 +26,10 @@ public class DateParser {
     }
 
     public Long parse(final String input) {
+        if((input == null) || (input.length() == 0)) {
+            return null;
+        }
+
         final String toParse = String.format(formatToParse, input);
         final ParsePosition parsePosition = new ParsePosition(0);
         final Date date = dateFormat.get().parse(toParse, parsePosition);

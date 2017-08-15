@@ -1,6 +1,10 @@
 package com.lonebytesoft.hamster.accounting.controller.view
 
-class RunningTotalView {
+class SummaryView {
+
+    var from: Long = 0
+
+    var to: Long = 0
 
     var items: Collection<OperationView>? = null
 

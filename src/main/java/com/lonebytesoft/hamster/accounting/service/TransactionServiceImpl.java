@@ -151,24 +151,26 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public Transaction add(long time, Category category, String comment, Map<Long, Double> operations) {
+    public Transaction add(long time, Category category, String comment, boolean visible, Map<Long, Double> operations) {
         final Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(time);
         Utils.setCalendarDayStart(calendar);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
 
-        final Transaction transaction = addAtExactTime(calendar.getTimeInMillis(), category, comment, operations);
+        final Transaction transaction = addAtExactTime(calendar.getTimeInMillis(), category, comment, visible, operations);
         performTimeAction(transaction, TransactionAction.MOVE_EARLIER);
 
         return transaction;
     }
 
     @Override
-    public Transaction addAtExactTime(long time, Category category, String comment, Map<Long, Double> operations) {
+    public Transaction addAtExactTime(long time, Category category, String comment, boolean visible,
+                                      Map<Long, Double> operations) {
         final Transaction transaction = new Transaction();
         transaction.setTime(time);
         transaction.setCategory(category);
         transaction.setComment(comment);
+        transaction.setVisible(visible);
 
         transaction.setOperations(operations
                 .entrySet()

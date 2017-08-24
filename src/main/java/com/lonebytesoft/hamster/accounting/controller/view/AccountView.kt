@@ -8,4 +8,6 @@ class AccountView {
 
     var currencyId: Long = 0
 
+    var visible: Boolean = true
+
 }

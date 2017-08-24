@@ -87,7 +87,7 @@ function populateMainTransactions(transactions, accounts, categories) {
 }
 
 function buildMainTransactions(transactions, accounts, categories) {
-    return transactions.transactions
+    return transactions
         .map(function(transaction) {
             var category = findByField(categories, 'id', transaction.categoryId);
             var categoryName = category === undefined ? '' : category.name;

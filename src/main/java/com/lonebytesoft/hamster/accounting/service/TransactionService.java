@@ -9,8 +9,8 @@ public interface TransactionService {
 
     void performTimeAction(Transaction transaction, TransactionAction action);
 
-    Transaction addAtExactTime(long time, Category category, String comment, Map<Long, Double> operations);
-    Transaction add(long time, Category category, String comment, Map<Long, Double> operations);
+    Transaction addAtExactTime(long time, Category category, String comment, boolean visible, Map<Long, Double> operations);
+    Transaction add(long time, Category category, String comment, boolean visible, Map<Long, Double> operations);
 
     void remove(Transaction transaction);
 

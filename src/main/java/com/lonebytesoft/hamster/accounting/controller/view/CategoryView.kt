@@ -6,4 +6,6 @@ class CategoryView {
 
     var name: String = ""
 
+    var visible: Boolean = true
+
 }

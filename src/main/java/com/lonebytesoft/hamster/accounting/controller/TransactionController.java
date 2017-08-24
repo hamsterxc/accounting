@@ -103,6 +103,8 @@ public class TransactionController {
         final Map<Long, Double> items = new HashMap<>();
         final Config config = configService.get();
         transactionRepository.findAllBetweenTime(from, to)
+                .stream()
+                .filter(Transaction::getVisible)
                 .forEach(transaction -> {
                     final double total = calculateTotal(transaction, config);
                     items.compute(transaction.getCategory().getId(), (id, amount) -> amount == null ? total : amount + total);
@@ -177,7 +179,7 @@ public class TransactionController {
                     });
         }
 
-        final Transaction transaction = transactionService.add(time, category, transactionInputView.getComment(), operations);
+        final Transaction transaction = transactionService.add(time, category, transactionInputView.getComment(), true, operations);
         return mapTransactionToView(transaction, configService.get());
     }
 

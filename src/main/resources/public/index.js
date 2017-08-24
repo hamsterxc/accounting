@@ -13,8 +13,12 @@ function refreshStatic() {
         $.ajax('category'),
         $.ajax('currency')
     ).then(function(accountsResponse, categoriesResponse, currenciesResponse) {
-        accounts = accountsResponse[0];
-        categories = categoriesResponse[0];
+        accounts = accountsResponse[0].filter(function(account) {
+            return account.visible;
+        });
+        categories = categoriesResponse[0].filter(function(category) {
+            return category.visible;
+        });
         currencies = currenciesResponse[0];
 
         populateMainHeader(accounts, currencies);
@@ -35,7 +39,9 @@ function refreshDynamic() {
     ).then(function(totalBeforeResponse, totalAfterResponse, transactionsResponse, boundaryResponse) {
         var totalBefore = totalBeforeResponse[0];
         var totalAfter = totalAfterResponse[0];
-        var transactions = transactionsResponse[0];
+        var transactions = transactionsResponse[0].transactions.filter(function(transaction) {
+            return transaction.visible && (findByField(categories, 'id', transaction.categoryId) !== undefined);
+        });
         var boundary = boundaryResponse[0];
 
         populateMainTotals(totalBefore, totalAfter, accounts);

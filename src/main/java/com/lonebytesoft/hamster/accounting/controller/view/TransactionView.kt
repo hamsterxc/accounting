@@ -10,6 +10,8 @@ class TransactionView {
 
     var comment: String = ""
 
+    var visible: Boolean = true
+
     var operations: Collection<OperationView>? = null
 
     var total: Double = 0.toDouble()

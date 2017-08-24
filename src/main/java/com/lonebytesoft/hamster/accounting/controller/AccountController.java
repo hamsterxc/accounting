@@ -29,6 +29,7 @@ public class AccountController {
                     accountView.setId(account.getId());
                     accountView.setName(account.getName());
                     accountView.setCurrencyId(account.getCurrency().getId());
+                    accountView.setVisible(account.getVisible());
                     return accountView;
                 })
                 .collect(Collectors.toList());

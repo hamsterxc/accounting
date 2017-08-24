@@ -19,6 +19,9 @@ class Category {
     @Column(nullable = false)
     var ordering: Long = 0
 
-    override fun toString(): String = "Category(id=$id, name='$name', ordering=$ordering)"
+    @Column(nullable = false)
+    var visible: Boolean = true
+
+    override fun toString(): String = "Category(id=$id, name='$name', ordering=$ordering, visible=$visible)"
 
 }

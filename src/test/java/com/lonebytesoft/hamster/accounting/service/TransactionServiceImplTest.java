@@ -113,7 +113,7 @@ public class TransactionServiceImplTest {
         final Category category = createCategory();
         final Map<Long, Double> operationsMap = createOperations(operationsCount);
 
-        final Transaction transaction = transactionService.addAtExactTime(time, category, comment, operationsMap);
+        final Transaction transaction = transactionService.addAtExactTime(time, category, comment, true, operationsMap);
         final long id = transaction.getId();
 
         ids.add(id);

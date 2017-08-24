@@ -28,6 +28,7 @@ public class CategoryController {
                     final CategoryView categoryView = new CategoryView();
                     categoryView.setId(category.getId());
                     categoryView.setName(category.getName());
+                    categoryView.setVisible(category.getVisible());
                     return categoryView;
                 })
                 .collect(Collectors.toList());

@@ -100,6 +100,7 @@ public class TestDataPopulator {
             final Category category = new Category();
 
             category.setName(generateRandomWords(1, 3, 4, 11));
+            category.setVisible(Math.random() > 1.5 / count);
 
             ordering += random(-1, 2);
             category.setOrdering(ordering);
@@ -133,6 +134,7 @@ public class TestDataPopulator {
 
             account.setName(generateRandomWords(1, 3, 4, 11));
             account.setCurrency(currencies.get(random(0, currencies.size())));
+            account.setVisible(Math.random() > 1.5 / count);
 
             accountRepository.save(account);
             accounts.add(account);
@@ -157,6 +159,7 @@ public class TestDataPopulator {
                     random(timeFrom, timeTo),
                     categories.get(random(0, categories.size())),
                     generateRandomWords(1, 6, 4, 16),
+                    Math.random() > 0.1,
                     operations
             );
         }

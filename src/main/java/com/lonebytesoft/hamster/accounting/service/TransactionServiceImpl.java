@@ -1,35 +1,46 @@
 package com.lonebytesoft.hamster.accounting.service;
 
-import com.lonebytesoft.hamster.accounting.dao.OperationDao;
-import com.lonebytesoft.hamster.accounting.dao.TransactionDao;
+import com.lonebytesoft.hamster.accounting.model.Account;
+import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
+import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
+import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.util.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
+@Service
 public class TransactionServiceImpl implements TransactionService {
 
-    private final TransactionDao transactionDao;
-    private final OperationDao operationDao;
+    private static final Logger logger = LoggerFactory.getLogger(TransactionServiceImpl.class);
 
-    public TransactionServiceImpl(final TransactionDao transactionDao, final OperationDao operationDao) {
-        this.transactionDao = transactionDao;
-        this.operationDao = operationDao;
+    private final TransactionRepository transactionRepository;
+    private final AccountRepository accountRepository;
+
+    @Autowired
+    public TransactionServiceImpl(final TransactionRepository transactionRepository, final AccountRepository accountRepository) {
+        this.transactionRepository = transactionRepository;
+        this.accountRepository = accountRepository;
     }
 
     @Override
     public void performTimeAction(Transaction transaction, TransactionAction action) {
         assertTransactionTimeAction(action);
 
-        final Optional<Transaction> closestOptional = action == TransactionAction.MOVE_EARLIER
-                ? transactionDao.getClosestBefore(transaction)
-                : transactionDao.getClosestAfter(transaction);
-        if(closestOptional.isPresent()) {
-            final Transaction closest = closestOptional.get();
+        final Transaction closest = action == TransactionAction.MOVE_EARLIER
+                ? transactionRepository.findFirstBefore(transaction.getTime())
+                : transactionRepository.findFirstAfter(transaction.getTime());
+        logger.debug("Performing time action {}: {}, closest {}", action, transaction, closest);
+        if(closest != null) {
             final long transactionTime = transaction.getTime();
             final long closestTime = closest.getTime();
             if(isSameDay(transactionTime, closestTime)) {
@@ -57,8 +68,10 @@ public class TransactionServiceImpl implements TransactionService {
         closest.setTime(transactionTime);
         transaction.setTime(closestTime);
 
-        transactionDao.save(transaction);
-        transactionDao.save(closest);
+        logger.debug("Performing time action, swap time: {}, {}", transaction, closest);
+
+        transactionRepository.save(transaction);
+        transactionRepository.save(closest);
     }
 
     private void moveInAdjacentDays(final Transaction transaction, final Transaction closest,
@@ -73,7 +86,8 @@ public class TransactionServiceImpl implements TransactionService {
         final long diff = Math.abs(threshold - closestTime);
         if(diff > 1) {
             transaction.setTime(Math.min(threshold, closestTime) + diff / 2);
-            transactionDao.save(transaction);
+            logger.debug("Performing time action, move in adjacent days: {}", transaction);
+            transactionRepository.save(transaction);
         } else {
             if(action == TransactionAction.MOVE_EARLIER) {
                 rebalance(calculateDayStart(closestTime, 0), threshold);
@@ -100,7 +114,8 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         transaction.setTime(start + (end - start) / 2);
-        transactionDao.save(transaction);
+        logger.debug("Performing time action, move lone: {}, {}", transaction);
+        transactionRepository.save(transaction);
     }
 
     private boolean isSameDay(final long first, final long second) {
@@ -124,57 +139,70 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private void rebalance(final long from, final long to) {
-        final List<Transaction> transactions = transactionDao.get(from, to);
+        logger.debug("Rebalancing transactions in '{}' - '{}'", new Date(from), new Date(to));
+        final List<Transaction> transactions = transactionRepository.findAllBetweenTime(from, to);
         final int count = transactions.size();
         final long delta = (to - from) / count;
         for(int i = 0; i < count; i++) {
             final Transaction transaction = transactions.get(i);
             transaction.setTime(from + i * delta);
-            transactionDao.save(transaction);
+            transactionRepository.save(transaction);
         }
     }
 
     @Override
-    public long add(long time, long categoryId, String comment, Map<Long, Double> operations) {
+    public Transaction add(long time, Category category, String comment, boolean visible, Map<Long, Double> operations) {
         final Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(time);
         Utils.setCalendarDayStart(calendar);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
 
-        final long id = addAtExactTime(calendar.getTimeInMillis(), categoryId, comment, operations);
-
-        final Transaction transaction = transactionDao.get(id)
-                .orElseThrow(() -> new IllegalStateException("Unable to add transaction"));
+        final Transaction transaction = addAtExactTime(calendar.getTimeInMillis(), category, comment, visible, operations);
         performTimeAction(transaction, TransactionAction.MOVE_EARLIER);
 
-        return id;
+        return transaction;
     }
 
     @Override
-    public long addAtExactTime(long time, long categoryId, String comment, Map<Long, Double> operations) {
+    public Transaction addAtExactTime(long time, Category category, String comment, boolean visible,
+                                      Map<Long, Double> operations) {
         final Transaction transaction = new Transaction();
         transaction.setTime(time);
-        transaction.setCategoryId(categoryId);
+        transaction.setCategory(category);
         transaction.setComment(comment);
-        transactionDao.save(transaction);
+        transaction.setVisible(visible);
 
-        final long transactionId = transaction.getId();
-        operations.forEach((accountId, amount) -> {
-            final Operation operation = new Operation();
-            operation.setTransactionId(transactionId);
-            operation.setAccountId(accountId);
-            operation.setAmount(amount);
-            operationDao.save(operation);
-        });
+        transaction.setOperations(operations
+                .entrySet()
+                .stream()
+                .map(entry -> {
+                    final Operation operation = new Operation();
+                    operation.setTransaction(transaction);
+                    operation.setAmount(entry.getValue());
 
-        return transaction.getId();
+                    final Account account = new Account();
+                    account.setId(entry.getKey());
+                    operation.setAccount(account);
+
+                    return operation;
+                })
+                .collect(Collectors.toList()));
+
+        final Transaction saved = transactionRepository.save(transaction);
+
+        // todo: hack: deeply nested entities are not lazily loaded
+        for(final Operation operation : saved.getOperations()) {
+            operation.setAccount(accountRepository.findOne(operation.getAccount().getId()));
+        }
+
+        logger.debug("Saved transaction {}", saved);
+        return saved;
     }
 
     @Override
     public void remove(Transaction transaction) {
-        operationDao.get(transaction.getId())
-                .forEach(operationDao::remove);
-        transactionDao.remove(transaction);
+        logger.debug("Deleting transaction {}", transaction);
+        transactionRepository.delete(transaction);
     }
 
 }

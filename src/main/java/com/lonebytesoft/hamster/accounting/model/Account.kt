@@ -5,20 +5,26 @@ import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
+import javax.persistence.JoinColumn
+import javax.persistence.ManyToOne
 
 @Entity
-class Account : HasId<Long> {
+class Account {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    override var id: Long = 0
+    var id: Long = 0
 
     @Column(unique = true, nullable = false)
     var name: String = ""
 
-    @Column(name = "currency_id", nullable = false)
-    var currencyId: Long = 0
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "currency_id", nullable = false)
+    lateinit var currency: Currency
+    
+    @Column(nullable = false)
+    var visible: Boolean = true
 
-    override fun toString(): String = "Account(id=$id, name='$name', currencyId=$currencyId)"
+    override fun toString(): String = "Account(id=$id, name='$name', currency=$currency, visible=$visible)"
 
 }

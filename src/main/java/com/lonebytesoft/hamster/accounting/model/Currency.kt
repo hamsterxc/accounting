@@ -7,11 +7,11 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 
 @Entity
-class Currency : HasId<Long> {
+class Currency {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    override var id: Long = 0
+    var id: Long = 0
 
     @Column(unique = true, nullable = false)
     var code: String = ""

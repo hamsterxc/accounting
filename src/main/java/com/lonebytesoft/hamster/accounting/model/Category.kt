@@ -7,11 +7,11 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 
 @Entity
-class Category : HasId<Long> {
+class Category {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    override var id: Long = 0
+    var id: Long = 0
 
     @Column(unique = true, nullable = false)
     var name: String = ""
@@ -19,6 +19,9 @@ class Category : HasId<Long> {
     @Column(nullable = false)
     var ordering: Long = 0
 
-    override fun toString(): String = "Category(id=$id, name='$name', ordering=$ordering)"
+    @Column(nullable = false)
+    var visible: Boolean = true
+
+    override fun toString(): String = "Category(id=$id, name='$name', ordering=$ordering, visible=$visible)"
 
 }

@@ -1,0 +1,26 @@
+table, tr, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+table {
+    margin: 10px 10px;
+}
+
+td, th {
+    padding: 5px;
+}
+
+table.summary {
+    display: inline-table;
+}
+
+span.warn {
+    color: red;
+}
+
+a.action {
+    text-decoration: none;
+    cursor: pointer;
+    color: blue;
+}

@@ -26,6 +26,10 @@ public class DateParser {
     }
 
     public Long parse(final String input) {
+        if((input == null) || (input.length() == 0)) {
+            return null;
+        }
+
         final String toParse = String.format(formatToParse, input);
         final ParsePosition parsePosition = new ParsePosition(0);
         final Date date = dateFormat.get().parse(toParse, parsePosition);
@@ -35,7 +39,7 @@ public class DateParser {
             Utils.setCalendarDayStart(calendar);
             return calendar.getTimeInMillis();
         } else {
-            logger.debug("Could not parse input '{}' (formatted '{}')");
+            logger.trace("Could not parse input '{}' (formatted '{}')", input, toParse);
             return null;
         }
     }

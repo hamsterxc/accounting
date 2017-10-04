@@ -11,6 +11,7 @@ import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Config;
 import com.lonebytesoft.hamster.accounting.model.Currency;
+import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
 import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
@@ -157,30 +158,47 @@ public class TransactionController {
 
     @RequestMapping(method = RequestMethod.POST, consumes = "application/json")
     public TransactionView addTransaction(@RequestBody TransactionInputView transactionInputView) {
+        final Transaction transaction = new Transaction();
+
         final Long time = parseDate(transactionInputView.getDate());
         if(time == null) {
             throw new TransactionInputException("Could not parse date: '" + transactionInputView.getDate() + "'");
         }
+        transaction.setTime(time);
 
         final Category category = categoryRepository.findOne(transactionInputView.getCategoryId());
         if(category == null) {
             throw new TransactionInputException("Could not find category, id=" + transactionInputView.getCategoryId());
         }
+        transaction.setCategory(category);
 
-        final Map<Long, Double> operations = new HashMap<>();
+        transaction.setComment(transactionInputView.getComment());
+
+        transaction.setVisible(true);
+
         if(transactionInputView.getOperations() != null) {
-            transactionInputView.getOperations()
-                    .forEach(operationView -> {
+            transaction.setOperations(transactionInputView.getOperations()
+                    .stream()
+                    .map(operationView -> {
+                        final Operation operation = new Operation();
+
+                        operation.setTransaction(transaction);
+
                         final Account account = accountRepository.findOne(operationView.getId());
                         if(account == null) {
                             throw new TransactionInputException("Could not find account, id=" + operationView.getId());
                         }
-                        operations.put(account.getId(), operationView.getAmount());
-                    });
+                        operation.setAccount(account);
+
+                        operation.setAmount(operationView.getAmount());
+
+                        return operation;
+                    })
+                    .collect(Collectors.toList()));
         }
 
-        final Transaction transaction = transactionService.add(time, category, transactionInputView.getComment(), true, operations);
-        return mapTransactionToView(transaction, configService.get());
+        final Transaction added = transactionService.addLastInDay(transaction);
+        return mapTransactionToView(added, configService.get());
     }
 
     @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
@@ -198,7 +216,7 @@ public class TransactionController {
                 break;
 
             case DELETE:
-                transactionService.remove(transaction);
+                transactionRepository.delete(transaction);
                 break;
         }
 

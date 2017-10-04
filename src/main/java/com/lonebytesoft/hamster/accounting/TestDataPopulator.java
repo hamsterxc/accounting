@@ -4,11 +4,13 @@ import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Config;
 import com.lonebytesoft.hamster.accounting.model.Currency;
+import com.lonebytesoft.hamster.accounting.model.Operation;
+import com.lonebytesoft.hamster.accounting.model.Transaction;
 import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
+import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.service.ConfigService;
-import com.lonebytesoft.hamster.accounting.service.TransactionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +21,9 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Component
 @Profile("test")
@@ -35,8 +37,8 @@ public class TestDataPopulator {
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final CurrencyRepository currencyRepository;
+    private final TransactionRepository transactionRepository;
 
-    private final TransactionService transactionService;
     private final ConfigService configService;
 
     private final int categoryCount;
@@ -46,8 +48,8 @@ public class TestDataPopulator {
 
     @Autowired
     public TestDataPopulator(final AccountRepository accountRepository, final CategoryRepository categoryRepository,
-                             final CurrencyRepository currencyRepository,
-                             final TransactionService transactionService, final ConfigService configService,
+                             final CurrencyRepository currencyRepository, final TransactionRepository transactionRepository,
+                             final ConfigService configService,
                              @Value("${accounting.test.populator.count.category}") final int categoryCount,
                              @Value("${accounting.test.populator.count.currency}") final int currencyCount,
                              @Value("${accounting.test.populator.count.account}") final int accountCount,
@@ -55,8 +57,8 @@ public class TestDataPopulator {
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.currencyRepository = currencyRepository;
+        this.transactionRepository = transactionRepository;
 
-        this.transactionService = transactionService;
         this.configService = configService;
 
         this.categoryCount = categoryCount;
@@ -82,7 +84,9 @@ public class TestDataPopulator {
         calendar.add(Calendar.YEAR, -1);
         final long from = calendar.getTimeInMillis();
 
-        populateTransactionOperation(transactionCount, categories, accounts, from, to);
+        for(int i = 0; i < transactionCount; i++) {
+            populateTransactionOperation(categories, accounts, from, to);
+        }
     }
 
     private void populateConfig(final List<Currency> currencies) {
@@ -142,27 +146,27 @@ public class TestDataPopulator {
         return accounts;
     }
 
-    private void populateTransactionOperation(final int count, final List<Category> categories, final List<Account> accounts,
+    private void populateTransactionOperation(final List<Category> categories, final List<Account> accounts,
                                               final long timeFrom, final long timeTo) {
-        for(int i = 0; i < count; i++) {
-            final int countOperations = random(1, accounts.size() + 1);
-            final List<Account> freeAccounts = new ArrayList<>(accounts);
-            final Map<Long, Double> operations = new HashMap<>();
-            for(int j = 0; j < countOperations; j++) {
-                operations.put(
-                        freeAccounts.remove(random(0, freeAccounts.size())).getId(),
-                        random(-1e5, 1e5)
-                );
-            }
+        final Transaction transaction = new Transaction();
+        transaction.setTime(random(timeFrom, timeTo));
+        transaction.setCategory(categories.get(random(0, categories.size())));
+        transaction.setComment(generateRandomWords(1, 6, 4, 16));
+        transaction.setVisible(Math.random() > 0.1);
 
-            transactionService.addAtExactTime(
-                    random(timeFrom, timeTo),
-                    categories.get(random(0, categories.size())),
-                    generateRandomWords(1, 6, 4, 16),
-                    Math.random() > 0.1,
-                    operations
-            );
-        }
+        final List<Account> freeAccounts = new ArrayList<>(accounts);
+        transaction.setOperations(IntStream.range(0, random(1, accounts.size() + 1))
+                .mapToObj(index -> {
+                    final Operation operation = new Operation();
+                    operation.setTransaction(transaction);
+                    operation.setAccount(freeAccounts.remove(random(0, freeAccounts.size())));
+                    operation.setAmount(random(-1e5, 1e5));
+                    return operation;
+                })
+                .collect(Collectors.toList())
+        );
+
+        transactionRepository.save(transaction);
     }
 
     private String generateRandomString(final char[] alphabet, final int length) {

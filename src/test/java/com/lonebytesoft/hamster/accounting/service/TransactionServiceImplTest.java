@@ -27,7 +27,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration("classpath:/spring-test.xml")
@@ -56,15 +58,11 @@ public class TransactionServiceImplTest {
     private Map<Long, Long> times = new HashMap<>();
     private Map<Long, Category> categories = new HashMap<>();
     private Map<Long, String> comments = new HashMap<>();
-    private Map<Long, Map<Long, Double>> operations = new HashMap<>();
+    private Map<Long, Collection<Operation>> operations = new HashMap<>();
 
     @Before
     public void before() {
-        final Calendar calendar = Calendar.getInstance();
-        calendar.set(2000, Calendar.JUNE, 15, 10, 0, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-
-        long time = calendar.getTimeInMillis(); // June 15th, 10:00 AM
+        long time = getBaseTime(); // June 15th, 10:00 AM
         createTransaction(time, "first", 2);
 
         time = addTime(time, 0, 8); // June 15th, 6:00 PM
@@ -75,6 +73,14 @@ public class TransactionServiceImplTest {
 
         time = addTime(time, 2, 4); // June 18th, 8:00 PM
         createTransaction(time, "fourth fourth fourth", 2);
+    }
+
+    // June 15th, 10:00 AM
+    private long getBaseTime() {
+        final Calendar calendar = Calendar.getInstance();
+        calendar.set(2000, Calendar.JUNE, 15, 10, 0, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
     }
 
     private Category createCategory() {
@@ -100,27 +106,47 @@ public class TransactionServiceImplTest {
         return accountRepository.save(account);
     }
 
-    private Map<Long, Double> createOperations(final int count) {
-        final Map<Long, Double> operations = new HashMap<>(count);
-        for(int i = 0; i < count; i++) {
-            final Account account = createAccount();
-            operations.put(account.getId(), (i + 1.0) * 10.0);
-        }
-        return operations;
+    private Collection<Operation> createOperations(final Transaction transaction, final int count) {
+        return IntStream.range(0, count)
+                .mapToObj(index -> {
+                    final Operation operation = new Operation();
+                    operation.setTransaction(transaction);
+                    operation.setAccount(createAccount());
+                    operation.setAmount((index + 1.0) * 10.0);
+                    return operation;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private Transaction constructTransaction(final long time, final String comment, final int operationsCount) {
+        final Transaction transaction = new Transaction();
+        transaction.setTime(time);
+        transaction.setCategory(createCategory());
+        transaction.setComment(comment);
+        transaction.setVisible(true);
+        transaction.setOperations(createOperations(transaction, operationsCount));
+        return transaction;
+    }
+
+    private void updateTestData(final Transaction transaction) {
+        final long id = transaction.getId();
+        ids.add(id);
+        times.put(id, transaction.getTime());
+        categories.put(id, transaction.getCategory());
+        comments.put(id, transaction.getComment());
+        operations.put(id, transaction.getOperations());
     }
 
     private void createTransaction(final long time, final String comment, final int operationsCount) {
-        final Category category = createCategory();
-        final Map<Long, Double> operationsMap = createOperations(operationsCount);
+        final Transaction transaction = constructTransaction(time, comment, operationsCount);
+        final Transaction added = transactionRepository.save(transaction);
+        updateTestData(added);
+    }
 
-        final Transaction transaction = transactionService.addAtExactTime(time, category, comment, true, operationsMap);
-        final long id = transaction.getId();
-
-        ids.add(id);
-        times.put(id, time);
-        categories.put(id, category);
-        comments.put(id, comment);
-        operations.put(id, operationsMap);
+    private void createTransactionLastInDay(final long time, final String comment, final int operationsCount) {
+        final Transaction transaction = constructTransaction(time, comment, operationsCount);
+        final Transaction added = transactionService.addLastInDay(transaction);
+        updateTestData(added);
     }
 
     private long addTime(final long time, final int days, final int hours) {
@@ -250,6 +276,46 @@ public class TransactionServiceImplTest {
         assertTransactionData(3, times.get(ids.get(3)));
     }
 
+    @Test
+    public void testAddLastInDayLoneNoNext() {
+        final long time = addTime(getBaseTime(), 4, 0); // June 19th, 10:00 AM
+        final long timeExpected = addTime(time, 0, 2); // June 19th, 12:00 PM
+        testAddLastInDay(time, timeExpected);
+    }
+
+    @Test
+    public void testAddLastInDayLoneNextPresent() {
+        final long time = addTime(getBaseTime(), 2, 0); // June 17th, 10:00 AM
+        final long timeExpected = addTime(time, 0, 2); // June 17th, 12:00 PM
+        testAddLastInDay(time, timeExpected);
+    }
+
+    @Test
+    public void testAddLastInDayNotAloneNoNext() {
+        final long time = addTime(getBaseTime(), 1, 0); // June 16th, 10:00 AM
+        final long timeExpected = addTime(time, 0, 10); // June 16th, 8:00 PM
+        testAddLastInDay(time, timeExpected);
+    }
+
+    @Test
+    public void testAddLastInDayNotAloneNextPresent() {
+        final long time = getBaseTime(); // June 15th, 10:00 AM
+        final long timeExpected = addTime(time, 0, 11); // June 15th, 9:00 PM
+        testAddLastInDay(time, timeExpected);
+    }
+
+    private void testAddLastInDay(final long time, final long timeExpected) {
+        createTransactionLastInDay(time, "last-in-day comment", 1);
+
+        assertTotalCount(5);
+
+        assertTransactionData(0, times.get(ids.get(0)));
+        assertTransactionData(1, times.get(ids.get(1)));
+        assertTransactionData(2, times.get(ids.get(2)));
+        assertTransactionData(3, times.get(ids.get(3)));
+        assertTransactionData(4, timeExpected);
+    }
+
     private Transaction getTransaction(final long id) {
         final Transaction transaction = transactionRepository.findOne(id);
         Assert.assertNotNull(transaction);
@@ -275,7 +341,7 @@ public class TransactionServiceImplTest {
         final long id = ids.get(index);
         final Transaction transaction = getTransaction(id);
 
-        Assert.assertEquals(id, (long) transaction.getId());
+        Assert.assertEquals(id, transaction.getId());
 
         logger.debug("Comparing dates: expected {}, actual {}", new Date(time), new Date(transaction.getTime()));
         Assert.assertEquals(time, transaction.getTime());
@@ -284,13 +350,28 @@ public class TransactionServiceImplTest {
         Assert.assertEquals(comments.get(id), transaction.getComment());
 
         final Collection<Operation> operations = transaction.getOperations();
-        operations.forEach(operation -> Assert.assertEquals(id, (long) operation.getTransaction().getId()));
-        final Map<Long, Double> values = operations.stream()
-                .collect(Collectors.toMap(
-                        operation -> operation.getAccount().getId(),
-                        Operation::getAmount
-                ));
-        Assert.assertEquals(this.operations.get(id), values);
+        Assert.assertEquals(this.operations.get(id).size(), operations.size());
+        operations.forEach(operation -> Assert.assertEquals(id, operation.getTransaction().getId()));
+
+        final Function<Operation, Long> accountIdExtractor = operation -> operation.getAccount().getId();
+        Assert.assertEquals(
+                collectOperationValues(this.operations.get(id), accountIdExtractor),
+                collectOperationValues(operations, accountIdExtractor)
+        );
+
+        final Function<Operation, Double> amountExtractor = Operation::getAmount;
+        Assert.assertEquals(
+                collectOperationValues(this.operations.get(id), amountExtractor),
+                collectOperationValues(operations, amountExtractor)
+        );
+    }
+
+    private <T> Collection<T> collectOperationValues(final Collection<Operation> operations,
+                                                     final Function<Operation, T> converter) {
+        return operations
+                .stream()
+                .map(converter)
+                .collect(Collectors.toList());
     }
 
 }

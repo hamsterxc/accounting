@@ -1,10 +1,6 @@
 package com.lonebytesoft.hamster.accounting.service;
 
-import com.lonebytesoft.hamster.accounting.model.Account;
-import com.lonebytesoft.hamster.accounting.model.Category;
-import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
-import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.util.Utils;
 import org.slf4j.Logger;
@@ -15,8 +11,6 @@ import org.springframework.stereotype.Service;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -24,12 +18,10 @@ public class TransactionServiceImpl implements TransactionService {
     private static final Logger logger = LoggerFactory.getLogger(TransactionServiceImpl.class);
 
     private final TransactionRepository transactionRepository;
-    private final AccountRepository accountRepository;
 
     @Autowired
-    public TransactionServiceImpl(final TransactionRepository transactionRepository, final AccountRepository accountRepository) {
+    public TransactionServiceImpl(final TransactionRepository transactionRepository) {
         this.transactionRepository = transactionRepository;
-        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -151,58 +143,19 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public Transaction add(long time, Category category, String comment, boolean visible, Map<Long, Double> operations) {
+    public Transaction addLastInDay(Transaction transaction) {
         final Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(time);
+        calendar.setTimeInMillis(transaction.getTime());
         Utils.setCalendarDayStart(calendar);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
+        transaction.setTime(calendar.getTimeInMillis());
 
-        final Transaction transaction = addAtExactTime(calendar.getTimeInMillis(), category, comment, visible, operations);
-        performTimeAction(transaction, TransactionAction.MOVE_EARLIER);
+        logger.debug("Saving last-in-day transaction {}", transaction);
 
-        return transaction;
-    }
+        final Transaction added = transactionRepository.save(transaction);
+        performTimeAction(added, TransactionAction.MOVE_EARLIER);
 
-    @Override
-    public Transaction addAtExactTime(long time, Category category, String comment, boolean visible,
-                                      Map<Long, Double> operations) {
-        final Transaction transaction = new Transaction();
-        transaction.setTime(time);
-        transaction.setCategory(category);
-        transaction.setComment(comment);
-        transaction.setVisible(visible);
-
-        transaction.setOperations(operations
-                .entrySet()
-                .stream()
-                .map(entry -> {
-                    final Operation operation = new Operation();
-                    operation.setTransaction(transaction);
-                    operation.setAmount(entry.getValue());
-
-                    final Account account = new Account();
-                    account.setId(entry.getKey());
-                    operation.setAccount(account);
-
-                    return operation;
-                })
-                .collect(Collectors.toList()));
-
-        final Transaction saved = transactionRepository.save(transaction);
-
-        // todo: hack: deeply nested entities are not lazily loaded
-        for(final Operation operation : saved.getOperations()) {
-            operation.setAccount(accountRepository.findOne(operation.getAccount().getId()));
-        }
-
-        logger.debug("Saved transaction {}", saved);
-        return saved;
-    }
-
-    @Override
-    public void remove(Transaction transaction) {
-        logger.debug("Deleting transaction {}", transaction);
-        transactionRepository.delete(transaction);
+        return added;
     }
 
 }

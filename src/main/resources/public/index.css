@@ -11,6 +11,15 @@ td, th {
     padding: 5px;
 }
 
+td.controls {
+    text-align: center;
+}
+
+td.controls input {
+    margin: 2px 0;
+    width: 100%;
+}
+
 table.summary {
     display: inline-table;
 }

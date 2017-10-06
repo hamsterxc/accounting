@@ -11,4 +11,16 @@ public final class Utils {
         calendar.set(Calendar.HOUR_OF_DAY, 0);
     }
 
+    public static long calculateDayStart(final long time) {
+        return calculateDayStart(time, 0);
+    }
+
+    public static long calculateDayStart(final long time, final int daysDelta) {
+        final Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(time);
+        setCalendarDayStart(calendar);
+        calendar.add(Calendar.DAY_OF_MONTH, daysDelta);
+        return calendar.getTimeInMillis();
+    }
+
 }

@@ -20,6 +20,7 @@ import com.lonebytesoft.hamster.accounting.service.ConfigService;
 import com.lonebytesoft.hamster.accounting.service.TransactionAction;
 import com.lonebytesoft.hamster.accounting.service.TransactionService;
 import com.lonebytesoft.hamster.accounting.util.DateParser;
+import com.lonebytesoft.hamster.accounting.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,8 +34,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -159,46 +162,33 @@ public class TransactionController {
     @RequestMapping(method = RequestMethod.POST, consumes = "application/json")
     public TransactionView addTransaction(@RequestBody TransactionInputView transactionInputView) {
         final Transaction transaction = new Transaction();
-
-        final Long time = parseDate(transactionInputView.getDate());
-        if(time == null) {
-            throw new TransactionInputException("Could not parse date: '" + transactionInputView.getDate() + "'");
-        }
-        transaction.setTime(time);
-
-        final Category category = categoryRepository.findOne(transactionInputView.getCategoryId());
-        if(category == null) {
-            throw new TransactionInputException("Could not find category, id=" + transactionInputView.getCategoryId());
-        }
-        transaction.setCategory(category);
-
-        transaction.setComment(transactionInputView.getComment());
-
-        transaction.setVisible(true);
-
-        if(transactionInputView.getOperations() != null) {
-            transaction.setOperations(transactionInputView.getOperations()
-                    .stream()
-                    .map(operationView -> {
-                        final Operation operation = new Operation();
-
-                        operation.setTransaction(transaction);
-
-                        final Account account = accountRepository.findOne(operationView.getId());
-                        if(account == null) {
-                            throw new TransactionInputException("Could not find account, id=" + operationView.getId());
-                        }
-                        operation.setAccount(account);
-
-                        operation.setAmount(operationView.getAmount());
-
-                        return operation;
-                    })
-                    .collect(Collectors.toList()));
-        }
+        transaction.setOperations(new ArrayList<>());
+        populateTransactionFromView(transaction, transactionInputView);
 
         final Transaction added = transactionService.addLastInDay(transaction);
         return mapTransactionToView(added, configService.get());
+    }
+
+    @RequestMapping(method = RequestMethod.PUT, path = "/{id}", consumes = "application/json")
+    public TransactionView modifyTransaction(@PathVariable final long id,
+                                             @RequestBody TransactionInputView transactionInputView) {
+        final Transaction transaction = transactionRepository.findOne(id);
+        if(transaction == null) {
+            throw new TransactionInputException("Could not find transaction, id=" + id);
+        }
+
+        final long time = transaction.getTime();
+        populateTransactionFromView(transaction, transactionInputView);
+
+        final Transaction modified;
+        if(Utils.calculateDayStart(time) == Utils.calculateDayStart(transaction.getTime())) {
+            transaction.setTime(time);
+            modified = transactionRepository.save(transaction);
+        } else {
+            modified = transactionService.addLastInDay(transaction);
+        }
+
+        return mapTransactionToView(modified, configService.get());
     }
 
     @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
@@ -249,6 +239,49 @@ public class TransactionController {
                 .mapToDouble(operation ->
                         convert(operation.getAccount().getCurrency(), config.getCurrencyDefault(), operation.getAmount()))
                 .sum();
+    }
+
+    private void populateTransactionFromView(final Transaction transaction, final TransactionInputView transactionInputView) {
+        final Long time = parseDate(transactionInputView.getDate());
+        if(time == null) {
+            throw new TransactionInputException("Could not parse date: '" + transactionInputView.getDate() + "'");
+        }
+        transaction.setTime(time);
+
+        final Category category = categoryRepository.findOne(transactionInputView.getCategoryId());
+        if(category == null) {
+            throw new TransactionInputException("Could not find category, id=" + transactionInputView.getCategoryId());
+        }
+        transaction.setCategory(category);
+
+        transaction.setComment(transactionInputView.getComment());
+
+        transaction.setVisible(true);
+
+        if(transactionInputView.getOperations() != null) {
+            final Collection<Operation> operations = transactionInputView.getOperations()
+                    .stream()
+                    .map(operationView -> {
+                        final Operation operation = new Operation();
+
+                        operation.setTransaction(transaction);
+
+                        final Account account = accountRepository.findOne(operationView.getId());
+                        if(account == null) {
+                            throw new TransactionInputException("Could not find account, id=" + operationView.getId());
+                        }
+                        operation.setAccount(account);
+
+                        operation.setAmount(operationView.getAmount());
+
+                        return operation;
+                    })
+                    .collect(Collectors.toList());
+
+            // preserving collection possibly tracked by Hibernate
+            transaction.getOperations().clear();
+            transaction.getOperations().addAll(operations);
+        }
     }
 
     private TransactionView mapTransactionToView(final Transaction transaction, final Config config) {

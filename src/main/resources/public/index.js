@@ -1,6 +1,7 @@
 var accounts;
 var categories;
 var currencies;
+var transactions;
 
 $(function() {
     refreshStatic();
@@ -13,6 +14,7 @@ function refreshStatic() {
         $.ajax('category'),
         $.ajax('currency')
     ).then(function(accountsResponse, categoriesResponse, currenciesResponse) {
+        transactions = [];
         accounts = accountsResponse[0].filter(function(account) {
             return account.visible;
         });
@@ -39,13 +41,13 @@ function refreshDynamic() {
     ).then(function(totalBeforeResponse, totalAfterResponse, transactionsResponse, boundaryResponse) {
         var totalBefore = totalBeforeResponse[0];
         var totalAfter = totalAfterResponse[0];
-        var transactions = transactionsResponse[0].transactions.filter(function(transaction) {
+        transactions = transactionsResponse[0].transactions.filter(function(transaction) {
             return transaction.visible && (findByField(categories, 'id', transaction.categoryId) !== undefined);
         });
         var boundary = boundaryResponse[0];
 
         populateMainTotals(totalBefore, totalAfter, accounts);
-        populateMainTransactions(transactions, accounts, categories);
+        populateMainTransactions(accounts, categories, transactions);
 
         var dateLower = new Date(boundary.lower);
         var date = new Date(dateLower.getUTCFullYear(), dateLower.getUTCMonth(), 1);
@@ -79,8 +81,20 @@ function performAdd(data) {
         contentType: 'application/json',
         data: JSON.stringify(data)
     }).then(function() {
-        populateMainAdd(accounts, categories);
         refreshDynamic();
+        populateMainAdd(accounts, categories);
+    });
+}
+
+function performEdit(data, transactionId) {
+    $.ajax({
+        type: 'PUT',
+        url: 'transaction/' + transactionId,
+        contentType: 'application/json',
+        data: JSON.stringify(data)
+    }).then(function() {
+        refreshDynamic();
+        populateMainAdd(accounts, categories);
     });
 }
 

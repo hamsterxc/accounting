@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -73,7 +72,7 @@ public class TransactionServiceImpl implements TransactionService {
         final long transactionTime = transaction.getTime();
         final long closestTime = closest.getTime();
 
-        final long threshold = calculateDayStart(
+        final long threshold = Utils.calculateDayStart(
                 action == TransactionAction.MOVE_EARLIER ? transactionTime : closestTime, 0);
         final long diff = Math.abs(threshold - closestTime);
         if(diff > 1) {
@@ -82,9 +81,9 @@ public class TransactionServiceImpl implements TransactionService {
             transactionRepository.save(transaction);
         } else {
             if(action == TransactionAction.MOVE_EARLIER) {
-                rebalance(calculateDayStart(closestTime, 0), threshold);
+                rebalance(Utils.calculateDayStart(closestTime, 0), threshold);
             } else {
-                rebalance(threshold, calculateDayStart(closestTime, 1));
+                rebalance(threshold, Utils.calculateDayStart(closestTime, 1));
             }
             performTimeAction(transaction, action);
         }
@@ -98,11 +97,11 @@ public class TransactionServiceImpl implements TransactionService {
         final long start;
         final long end;
         if(action == TransactionAction.MOVE_EARLIER) {
-            start = calculateDayStart(transactionTime, -1);
-            end = calculateDayStart(transactionTime, 0);
+            start = Utils.calculateDayStart(transactionTime, -1);
+            end = Utils.calculateDayStart(transactionTime, 0);
         } else {
-            start = calculateDayStart(transactionTime, 1);
-            end = calculateDayStart(transactionTime, 2);
+            start = Utils.calculateDayStart(transactionTime, 1);
+            end = Utils.calculateDayStart(transactionTime, 2);
         }
 
         transaction.setTime(start + (end - start) / 2);
@@ -111,23 +110,15 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private boolean isSameDay(final long first, final long second) {
-        final long dayFirst = calculateDayStart(first, 0);
-        final long daySecond = calculateDayStart(second, 0);
+        final long dayFirst = Utils.calculateDayStart(first);
+        final long daySecond = Utils.calculateDayStart(second);
         return dayFirst == daySecond;
     }
     
     private boolean isAdjacentDays(final long first, final long second) {
         final long min = Math.min(first, second);
         final long max = Math.max(first, second);
-        return calculateDayStart(min, 1) == calculateDayStart(max, 0);
-    }
-
-    private long calculateDayStart(final long time, final int daysDelta) {
-        final Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(time);
-        Utils.setCalendarDayStart(calendar);
-        calendar.add(Calendar.DAY_OF_MONTH, daysDelta);
-        return calendar.getTimeInMillis();
+        return Utils.calculateDayStart(min, 1) == Utils.calculateDayStart(max, 0);
     }
 
     private void rebalance(final long from, final long to) {
@@ -144,11 +135,8 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public Transaction addLastInDay(Transaction transaction) {
-        final Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(transaction.getTime());
-        Utils.setCalendarDayStart(calendar);
-        calendar.add(Calendar.DAY_OF_MONTH, 1);
-        transaction.setTime(calendar.getTimeInMillis());
+        final long time = Utils.calculateDayStart(transaction.getTime(), 1);
+        transaction.setTime(time);
 
         logger.debug("Saving last-in-day transaction {}", transaction);
 

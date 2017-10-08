@@ -1,4 +1,4 @@
-package com.lonebytesoft.hamster.accounting.service;
+package com.lonebytesoft.hamster.accounting.service.transaction;
 
 import com.lonebytesoft.hamster.accounting.model.Transaction;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;

@@ -162,6 +162,19 @@ function buildMainTransaction(accounts, categories, transactionId) {
             .join('');
 }
 
+function populateCurrency(currencies) {
+    $('#currency').html(buildCurrency(currencies));
+}
+
+function buildCurrency(currencies) {
+    return '<table>'
+        + '<tr><th colspan="2">Currency rates</th></tr>'
+        + currencies.map(function(currency) {
+            return '<tr><td>' + currency.name + '</td><td>' + Number(currency.value).toFixed(2) + '</td></tr>'
+        }).join('')
+        + '</table>';
+}
+
 function populateSummary(summaries, categories) {
     $('#summary').html(summaries
         .map(function(summary) {

@@ -25,6 +25,7 @@ function refreshStatic() {
 
         populateMainHeader(accounts, currencies);
         populateMainAdd(accounts, categories);
+        populateCurrency(currencies);
     });
 }
 

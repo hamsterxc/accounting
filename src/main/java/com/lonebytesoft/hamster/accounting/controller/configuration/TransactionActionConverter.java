@@ -1,6 +1,6 @@
 package com.lonebytesoft.hamster.accounting.controller.configuration;
 
-import com.lonebytesoft.hamster.accounting.service.TransactionAction;
+import com.lonebytesoft.hamster.accounting.service.transaction.TransactionAction;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 

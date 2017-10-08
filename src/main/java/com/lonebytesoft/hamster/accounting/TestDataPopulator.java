@@ -10,7 +10,7 @@ import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
-import com.lonebytesoft.hamster.accounting.service.ConfigService;
+import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

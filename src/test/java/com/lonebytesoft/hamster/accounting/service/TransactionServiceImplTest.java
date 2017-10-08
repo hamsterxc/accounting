@@ -9,6 +9,8 @@ import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
+import com.lonebytesoft.hamster.accounting.service.transaction.TransactionAction;
+import com.lonebytesoft.hamster.accounting.service.transaction.TransactionService;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

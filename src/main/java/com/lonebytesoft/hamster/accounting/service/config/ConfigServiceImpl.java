@@ -1,4 +1,4 @@
-package com.lonebytesoft.hamster.accounting.service;
+package com.lonebytesoft.hamster.accounting.service.config;
 
 import com.lonebytesoft.hamster.accounting.model.Config;
 import com.lonebytesoft.hamster.accounting.model.ConfigEntry;

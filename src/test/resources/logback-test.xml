@@ -2,7 +2,7 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/base.xml"/>
 
-    <logger name="com.lonebytesoft.hamster.accounting" level="error"/>
+    <logger name="com.lonebytesoft.hamster.accounting" level="info"/>
     <logger name="org.springframework" level="info"/>
     <logger name="org.hibernate" level="info"/>
 

@@ -1,5 +1,6 @@
 package com.lonebytesoft.hamster.accounting.service;
 
+import com.lonebytesoft.hamster.accounting.DatasourcePropertiesIgnoringContextInitializer;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Currency;
@@ -34,7 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration("classpath:/spring-test.xml")
+@ContextConfiguration(locations = "classpath:/spring-test.xml", initializers = DatasourcePropertiesIgnoringContextInitializer.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class TransactionServiceImplTest {
 

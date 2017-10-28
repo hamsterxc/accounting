@@ -1,4 +1,4 @@
-package com.lonebytesoft.hamster.accounting;
+package com.lonebytesoft.hamster.accounting.app;
 
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Category;

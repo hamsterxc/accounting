@@ -1,10 +1,14 @@
 function find(items, value, fieldName = 'id') {
-    return items.filter(item => item[fieldName] === value)[0];
+    return findAll(items, value, fieldName)[0];
 }
 
-function formatNumber(number) {
+function findAll(items, value, fieldName = 'id') {
+    return items.filter(item => item[fieldName] === value);
+}
+
+function formatNumber(number, addString = '') {
     const value = Number(number);
-    const formatted = value.toFixed(2);
+    const formatted = value.toFixed(2) + addString;
     return value < 0 ? ('<span class="warn">' + formatted + '</span>') : formatted;
 }
 

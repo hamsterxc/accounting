@@ -23,9 +23,17 @@ class Operation {
     @JoinColumn(name = "account_id", nullable = false)
     lateinit var account: Account
 
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "currency_id")
+    var currency: Currency? = null
+
     @Column
     var amount: Double = 0.toDouble()
 
-    override fun toString(): String = "Operation(id=$id, transactionId=" + transaction.id + ", account=$account, amount=$amount)"
+    @Column
+    var isActive: Boolean = true
+
+    override fun toString(): String = "Operation(id=$id, transactionId=" + transaction.id +
+            ", account=$account, currency=$currency, amount=$amount, isActive=$isActive)"
 
 }

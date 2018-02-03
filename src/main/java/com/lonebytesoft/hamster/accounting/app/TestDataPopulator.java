@@ -85,7 +85,7 @@ public class TestDataPopulator {
         final long from = calendar.getTimeInMillis();
 
         for(int i = 0; i < transactionCount; i++) {
-            populateTransactionOperation(categories, accounts, from, to);
+            populateTransactionOperation(categories, currencies, accounts, from, to);
         }
     }
 
@@ -146,7 +146,8 @@ public class TestDataPopulator {
         return accounts;
     }
 
-    private void populateTransactionOperation(final List<Category> categories, final List<Account> accounts,
+    private void populateTransactionOperation(final List<Category> categories, final List<Currency> currencies,
+                                              final List<Account> accounts,
                                               final long timeFrom, final long timeTo) {
         final Transaction transaction = new Transaction();
         transaction.setTime(random(timeFrom, timeTo));
@@ -155,12 +156,16 @@ public class TestDataPopulator {
         transaction.setVisible(Math.random() > 0.1);
 
         final List<Account> freeAccounts = new ArrayList<>(accounts);
-        transaction.setOperations(IntStream.range(0, random(1, accounts.size() + 1))
+        transaction.setOperations(IntStream.range(0, random(1, accounts.size() * 2))
                 .mapToObj(index -> {
                     final Operation operation = new Operation();
                     operation.setTransaction(transaction);
-                    operation.setAccount(freeAccounts.remove(random(0, freeAccounts.size())));
+                    operation.setAccount(freeAccounts.get(random(0, freeAccounts.size())));
+                    if(random(0, 3) > 0) {
+                        operation.setCurrency(currencies.get(random(0, currencies.size())));
+                    }
                     operation.setAmount(random(-1e5, 1e5));
+                    operation.setActive(random(0, 3) > 0);
                     return operation;
                 })
                 .collect(Collectors.toList())

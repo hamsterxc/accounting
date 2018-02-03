@@ -8,6 +8,6 @@ class TransactionInputView {
 
     var comment: String = ""
 
-    var operations: Collection<OperationView>? = null
+    var operations: Collection<OperationInputView>? = null
 
 }

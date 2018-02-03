@@ -1,12 +1,10 @@
 package com.lonebytesoft.hamster.accounting.controller.view
 
-class OperationView {
+class OperationInputView {
 
     var accountId: Long = 0
 
-    var currencyId: Long? = null
-
-    var amount: Double = 0.toDouble()
+    var amount: String = ""
 
     var isActive: Boolean = true
 

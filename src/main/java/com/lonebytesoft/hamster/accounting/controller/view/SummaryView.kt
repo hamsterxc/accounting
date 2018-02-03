@@ -6,7 +6,7 @@ class SummaryView {
 
     var to: Long = 0
 
-    var items: Collection<OperationView>? = null
+    var items: Collection<SummaryItemView>? = null
 
     var total: Double = 0.toDouble()
 

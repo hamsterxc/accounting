@@ -28,6 +28,10 @@ span.warn {
     color: red;
 }
 
+span.oneline {
+    white-space: nowrap;
+}
+
 a.action {
     text-decoration: none;
     cursor: pointer;

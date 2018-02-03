@@ -2,6 +2,7 @@ package com.lonebytesoft.hamster.accounting.controller;
 
 import com.lonebytesoft.hamster.accounting.controller.view.ActionResultView;
 import com.lonebytesoft.hamster.accounting.controller.view.OperationView;
+import com.lonebytesoft.hamster.accounting.controller.view.SummaryItemView;
 import com.lonebytesoft.hamster.accounting.controller.view.SummaryView;
 import com.lonebytesoft.hamster.accounting.controller.view.TransactionBoundaryView;
 import com.lonebytesoft.hamster.accounting.controller.view.TransactionInputView;
@@ -15,6 +16,7 @@ import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
 import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
+import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
 import com.lonebytesoft.hamster.accounting.service.transaction.TransactionAction;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -43,6 +46,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @RestController
@@ -57,8 +62,13 @@ public class TransactionController {
             new DateParser("dd.MM.yyyy")
     );
 
+    private static final String OPERATION_AMOUNT_PATTERN_STRING = "((-+)?\\d+(" + DecimalFormatSymbols.getInstance().getDecimalSeparator() + "\\d+)?)";
+    private static final Pattern OPERATION_AMOUNT_PATTERN = Pattern.compile(OPERATION_AMOUNT_PATTERN_STRING);
+    private static final Pattern OPERATION_AMOUNT_CURRENCY_PATTERN = Pattern.compile(OPERATION_AMOUNT_PATTERN_STRING + "\\s+(\\w+)");
+
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final CurrencyRepository currencyRepository;
     private final TransactionRepository transactionRepository;
 
     private final TransactionService transactionService;
@@ -66,10 +76,11 @@ public class TransactionController {
 
     @Autowired
     public TransactionController(final AccountRepository accountRepository, final CategoryRepository categoryRepository,
-                                 final TransactionRepository transactionRepository,
+                                 final CurrencyRepository currencyRepository, final TransactionRepository transactionRepository,
                                  final TransactionService transactionService, final ConfigService configService) {
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
+        this.currencyRepository = currencyRepository;
         this.transactionRepository = transactionRepository;
 
         this.transactionService = transactionService;
@@ -86,10 +97,13 @@ public class TransactionController {
         transactionRepository.findAllBetweenTime(from, to)
                 .forEach(transaction -> {
                     transaction.getOperations()
+                            .stream()
+                            .filter(Operation::isActive)
                             .forEach(operation -> {
                                 final Account account = operation.getAccount();
+                                final double operationAmount = convertToAccountAmount(operation);
                                 accountsRunningTotal.compute(account.getId(),
-                                        (id, amount) -> amount == null ? operation.getAmount() : amount + operation.getAmount());
+                                        (id, amount) -> amount == null ? operationAmount : amount + operationAmount);
                             });
                     final double total = calculateTotal(transaction, config);
                     accountsRunningTotal.compute(null, (id, amount) -> amount == null ? total : amount + total);
@@ -224,6 +238,12 @@ public class TransactionController {
         return amountBase / to.getValue();
     }
 
+    private double convertToAccountAmount(final Operation operation) {
+        return operation.getCurrency() == null
+                ? operation.getAmount()
+                : convert(operation.getCurrency(), operation.getAccount().getCurrency(), operation.getAmount());
+    }
+
     private Long parseDate(final String date) {
         return DATE_FORMATS
                 .stream()
@@ -236,8 +256,10 @@ public class TransactionController {
     private double calculateTotal(final Transaction transaction, final Config config) {
         return transaction.getOperations()
                 .stream()
+                .filter(Operation::isActive)
                 .mapToDouble(operation ->
-                        convert(operation.getAccount().getCurrency(), config.getCurrencyDefault(), operation.getAmount()))
+                        convert(operation.getCurrency() == null ? operation.getAccount().getCurrency() : operation.getCurrency(),
+                                config.getCurrencyDefault(), operation.getAmount()))
                 .sum();
     }
 
@@ -261,18 +283,40 @@ public class TransactionController {
         if(transactionInputView.getOperations() != null) {
             final Collection<Operation> operations = transactionInputView.getOperations()
                     .stream()
-                    .map(operationView -> {
+                    .filter(operationInputView -> !isBlank(operationInputView.getAmount()))
+                    .map(operationInputView -> {
                         final Operation operation = new Operation();
 
                         operation.setTransaction(transaction);
 
-                        final Account account = accountRepository.findOne(operationView.getId());
+                        final Account account = accountRepository.findOne(operationInputView.getAccountId());
                         if(account == null) {
-                            throw new TransactionInputException("Could not find account, id=" + operationView.getId());
+                            throw new TransactionInputException("Could not find account, id=" + operationInputView.getAccountId());
                         }
                         operation.setAccount(account);
 
-                        operation.setAmount(operationView.getAmount());
+                        final double amount;
+                        final Matcher matcherWithCurrency = OPERATION_AMOUNT_CURRENCY_PATTERN.matcher(operationInputView.getAmount());
+                        if(matcherWithCurrency.find()) {
+                            amount = Double.parseDouble(matcherWithCurrency.group(1));
+
+                            final String currencyCode = matcherWithCurrency.group(4);
+                            final Currency currency = currencyRepository.findByCode(currencyCode);
+                            if(currency == null) {
+                                throw new TransactionInputException("Could not find currency, code=" + currencyCode);
+                            }
+                            operation.setCurrency(currency);
+                        } else {
+                            final Matcher matcher = OPERATION_AMOUNT_PATTERN.matcher(operationInputView.getAmount());
+                            if(matcher.find()) {
+                                amount = Double.parseDouble(matcher.group(1));
+                            } else {
+                                throw new TransactionInputException("Could not parse amount string: " + operationInputView.getAmount());
+                            }
+                        }
+                        operation.setAmount(amount);
+
+                        operation.setActive(operationInputView.isActive());
 
                         return operation;
                     })
@@ -282,6 +326,10 @@ public class TransactionController {
             transaction.getOperations().clear();
             transaction.getOperations().addAll(operations);
         }
+    }
+
+    private boolean isBlank(final String s) {
+        return (s == null) || (s.trim().equals(""));
     }
 
     private TransactionView mapTransactionToView(final Transaction transaction, final Config config) {
@@ -295,8 +343,10 @@ public class TransactionController {
                 .stream()
                 .map(operation -> {
                     final OperationView operationView = new OperationView();
-                    operationView.setId(operation.getAccount().getId());
+                    operationView.setAccountId(operation.getAccount().getId());
+                    operationView.setCurrencyId(operation.getCurrency() == null ? null : operation.getCurrency().getId());
                     operationView.setAmount(operation.getAmount());
+                    operationView.setActive(operation.isActive());
                     return operationView;
                 })
                 .collect(Collectors.toList())
@@ -309,10 +359,10 @@ public class TransactionController {
         summaryView.setItems(items.entrySet()
                 .stream()
                 .map(entry -> {
-                    final OperationView operationView = new OperationView();
-                    operationView.setId(entry.getKey());
-                    operationView.setAmount(entry.getValue());
-                    return operationView;
+                    final SummaryItemView summaryItemView = new SummaryItemView();
+                    summaryItemView.setId(entry.getKey());
+                    summaryItemView.setAmount(entry.getValue());
+                    return summaryItemView;
                 })
                 .collect(Collectors.toList()));
         summaryView.setTotal(total);

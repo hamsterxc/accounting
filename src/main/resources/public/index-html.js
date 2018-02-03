@@ -15,6 +15,7 @@ function buildMainHeader() {
 function populateMainAdd() {
     $('#main-add').html('<tr>' + buildMainTransactionEdit() + '</tr>');
     setupMainSubmit(0);
+    $(buildInputSelector('date', 0)).focus();
 }
 
 function buildMainTransactionEdit(transactionId) {

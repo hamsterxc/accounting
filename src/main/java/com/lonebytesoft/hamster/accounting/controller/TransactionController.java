@@ -338,6 +338,7 @@ public class TransactionController {
         transactionView.setTime(transaction.getTime());
         transactionView.setCategoryId(transaction.getCategory().getId());
         transactionView.setComment(transaction.getComment());
+        transactionView.setVisible(transaction.getVisible());
         transactionView.setTotal(calculateTotal(transaction, config));
         transactionView.setOperations(transaction.getOperations()
                 .stream()

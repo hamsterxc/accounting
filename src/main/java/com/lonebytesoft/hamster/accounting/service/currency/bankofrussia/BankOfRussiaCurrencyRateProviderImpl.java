@@ -97,7 +97,7 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
             });
 
             final double rateSubject = getRate(rates, isoCodeSubject);
-            final double rateBase = ISO_CODE_DEFAULT.equals(isoCodeBase) ? RATE_DEFAULT : getRate(rates, isoCodeBase);
+            final double rateBase = getRate(rates, isoCodeBase);
             return rateSubject / rateBase;
         } catch (BankOfRussiaException e) {
             if(e.getCause() == null) {
@@ -110,8 +110,9 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
     }
 
     private double getRate(final Map<String, Double> rates, final String isoCode) {
-        return Optional.ofNullable(rates.get(isoCode))
-                .orElseThrow(() -> new BankOfRussiaException("Unknown currency ISO code: " + isoCode));
+        return ISO_CODE_DEFAULT.equals(isoCode)
+                ? RATE_DEFAULT
+                : Optional.ofNullable(rates.get(isoCode)).orElseThrow(() -> new BankOfRussiaException("Unknown currency ISO code: " + isoCode));
     }
 
     private static class BankOfRussiaException extends RuntimeException {

@@ -4,11 +4,14 @@ let currencies = [];
 let transactions = [];
 
 $(() => {
-    refreshStatic();
-    refreshDynamic();
+    $
+        .when(refreshStatic())
+        .then(() => refreshDynamic());
 });
 
 function refreshStatic() {
+    let deferred = new $.Deferred();
+
     $.when(
         $.ajax('account'),
         $.ajax('category'),
@@ -22,10 +25,16 @@ function refreshStatic() {
         populateMainHeader();
         populateMainAdd();
         populateCurrency();
+
+        deferred.resolve();
     });
+
+    return deferred.promise();
 }
 
 function refreshDynamic() {
+    let deferred = new $.Deferred();
+
     const today = new Date();
     const from = new Date(today.getUTCFullYear(), today.getUTCMonth() - 1, 1).getTime();
     const to = new Date(today.getUTCFullYear(), today.getUTCMonth() + 1, 1).getTime();
@@ -61,7 +70,11 @@ function refreshDynamic() {
         summaries = summaries.filter(item => item.items.length > 0);
         summaries.sort((a, b) => a.from - b.from);
         populateSummary(summaries);
+
+        deferred.resolve();
     });
+
+    return deferred.promise();
 }
 
 function performAdd(data) {

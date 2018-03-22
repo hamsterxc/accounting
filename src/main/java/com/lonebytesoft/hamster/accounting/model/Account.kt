@@ -7,15 +7,18 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
+import javax.persistence.Table
+import javax.persistence.UniqueConstraint
 
 @Entity
+@Table(uniqueConstraints = arrayOf(UniqueConstraint(columnNames = arrayOf("name", "currency_id"))))
 class Account {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     var id: Long = 0
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     var name: String = ""
 
     @ManyToOne(optional = false)

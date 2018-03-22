@@ -24,10 +24,13 @@ class Account {
     @ManyToOne(optional = false)
     @JoinColumn(name = "currency_id", nullable = false)
     lateinit var currency: Currency
+
+    @Column(nullable = false)
+    var ordering: Long = 0
     
     @Column(nullable = false)
     var visible: Boolean = true
 
-    override fun toString(): String = "Account(id=$id, name='$name', currency=$currency, visible=$visible)"
+    override fun toString(): String = "Account(id=$id, name='$name', currency=$currency, ordering=$ordering, visible=$visible)"
 
 }

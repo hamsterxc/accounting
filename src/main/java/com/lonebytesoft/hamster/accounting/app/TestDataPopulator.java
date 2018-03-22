@@ -133,12 +133,16 @@ public class TestDataPopulator {
 
     private List<Account> populateAccount(final int count, final List<Currency> currencies) {
         final List<Account> accounts = new ArrayList<>(count);
+        int ordering = 0;
         for(int i = 0; i < count; i++) {
             final Account account = new Account();
 
             account.setName(generateRandomWords(1, 3, 4, 11));
             account.setCurrency(currencies.get(random(0, currencies.size())));
             account.setVisible(Math.random() > 1.5 / count);
+
+            ordering += random(-1, 2);
+            account.setOrdering(ordering);
 
             accountRepository.save(account);
             accounts.add(account);

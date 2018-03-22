@@ -38,7 +38,11 @@ function buildMainTransactionEdit(transactionId) {
             + '/>'
         ]
         .concat(accounts.map(account => {
-            const operations = isPreset ? findAll(transaction.operations, account.id, 'accountId') : [buildGenericOperation(account.id)];
+            const operations = isPreset ? findAll(transaction.operations, account.id, 'accountId') : [];
+            if(operations.length === 0) {
+                operations.push(buildGenericOperation(account.id));
+            }
+
             return '<input type="hidden" name="data-holder" ' + buildOperationDataAttributes(transactionId, account.id, operations.length) + '/>' +
                 operations
                     .map((operation, index) => buildOperationEditLine(transactionId, account.id, operation, operations.length <= 1, index))

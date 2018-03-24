@@ -272,6 +272,7 @@ function buildSummary(summary) {
                 })
             )
             .map(item => '<tr>' + item + '</tr>')
+            .concat(['<th colspan="2">' + formatNumber(summary.total) + '</th>'])
             .join('')
         + '</table>';
 }

@@ -19,10 +19,9 @@ import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
+import com.lonebytesoft.hamster.accounting.service.date.DateService;
 import com.lonebytesoft.hamster.accounting.service.transaction.TransactionAction;
 import com.lonebytesoft.hamster.accounting.service.transaction.TransactionService;
-import com.lonebytesoft.hamster.accounting.util.DateParser;
-import com.lonebytesoft.hamster.accounting.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,14 +37,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -55,12 +50,6 @@ import java.util.stream.Collectors;
 public class TransactionController {
 
     private static final Logger logger = LoggerFactory.getLogger(TransactionController.class);
-
-    private static final List<DateParser> DATE_FORMATS = Arrays.asList(
-            new DateParser("dd.MM.yyyy", "%s." + Calendar.getInstance().get(Calendar.YEAR)), // dd.MM
-            new DateParser("dd.MM.yy"),
-            new DateParser("dd.MM.yyyy")
-    );
 
     private static final String OPERATION_AMOUNT_PATTERN_STRING = "((-+)?\\d+(" + DecimalFormatSymbols.getInstance().getDecimalSeparator() + "\\d+)?)";
     private static final Pattern OPERATION_AMOUNT_PATTERN = Pattern.compile(OPERATION_AMOUNT_PATTERN_STRING);
@@ -73,11 +62,12 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final ConfigService configService;
+    private final DateService dateService;
 
     @Autowired
     public TransactionController(final AccountRepository accountRepository, final CategoryRepository categoryRepository,
                                  final CurrencyRepository currencyRepository, final TransactionRepository transactionRepository,
-                                 final TransactionService transactionService, final ConfigService configService) {
+                                 final TransactionService transactionService, final ConfigService configService, final DateService dateService) {
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.currencyRepository = currencyRepository;
@@ -85,6 +75,7 @@ public class TransactionController {
 
         this.transactionService = transactionService;
         this.configService = configService;
+        this.dateService = dateService;
     }
 
     @RequestMapping(method = RequestMethod.GET, path = "/runningtotal")
@@ -195,7 +186,7 @@ public class TransactionController {
         populateTransactionFromView(transaction, transactionInputView);
 
         final Transaction modified;
-        if(Utils.calculateDayStart(time) == Utils.calculateDayStart(transaction.getTime())) {
+        if(dateService.calculateDayStart(time, 0) == dateService.calculateDayStart(transaction.getTime(), 0)) {
             transaction.setTime(time);
             modified = transactionRepository.save(transaction);
         } else {
@@ -244,15 +235,6 @@ public class TransactionController {
                 : convert(operation.getCurrency(), operation.getAccount().getCurrency(), operation.getAmount());
     }
 
-    private Long parseDate(final String date) {
-        return DATE_FORMATS
-                .stream()
-                .map(dateParser -> dateParser.parse(date))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
-    }
-
     private double calculateTotal(final Transaction transaction, final Config config) {
         return transaction.getOperations()
                 .stream()
@@ -264,7 +246,7 @@ public class TransactionController {
     }
 
     private void populateTransactionFromView(final Transaction transaction, final TransactionInputView transactionInputView) {
-        final Long time = parseDate(transactionInputView.getDate());
+        final Long time = dateService.parse(transactionInputView.getDate());
         if(time == null) {
             throw new TransactionInputException("Could not parse date: '" + transactionInputView.getDate() + "'");
         }

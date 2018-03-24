@@ -1,9 +1,10 @@
 package com.lonebytesoft.hamster.accounting.service.currency.bankofrussia;
 
 import com.lonebytesoft.hamster.accounting.service.currency.CurrencyRateProvider;
-import com.lonebytesoft.hamster.accounting.util.Utils;
+import com.lonebytesoft.hamster.accounting.service.date.DateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.xml.bind.JAXBContext;
@@ -35,10 +36,14 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
 
     private final Unmarshaller unmarshaller;
     private final URL apiUrl;
+    private final DateService dateService;
 
     private final Map<Long, Map<String, Double>> dailyRates = new ConcurrentHashMap<>();
 
-    public BankOfRussiaCurrencyRateProviderImpl() {
+    @Autowired
+    public BankOfRussiaCurrencyRateProviderImpl(final DateService dateService) {
+        this.dateService = dateService;
+
         try {
             apiUrl = new URL(API_URL);
         } catch (MalformedURLException e) {
@@ -57,7 +62,7 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
 
     @Override
     public Double getCurrencyRate(String isoCodeSubject, String isoCodeBase) {
-        final long dayStart = Utils.calculateDayStart(System.currentTimeMillis());
+        final long dayStart = dateService.calculateDayStart(System.currentTimeMillis(), 0);
 
         try {
             final Map<String, Double> rates = dailyRates.computeIfAbsent(dayStart, time -> {

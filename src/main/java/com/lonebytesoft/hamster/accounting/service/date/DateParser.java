@@ -1,4 +1,4 @@
-package com.lonebytesoft.hamster.accounting.util;
+package com.lonebytesoft.hamster.accounting.service.date;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
-public class DateParser {
+class DateParser {
 
     private static final Logger logger = LoggerFactory.getLogger(DateParser.class);
 
@@ -17,7 +17,7 @@ public class DateParser {
     private final String formatToParse;
 
     public DateParser(final String format) {
-        this(format, "%s");
+        this(format, null);
     }
 
     public DateParser(final String format, final String formatToParse) {
@@ -25,19 +25,25 @@ public class DateParser {
         this.formatToParse = formatToParse;
     }
 
-    public Long parse(final String input) {
-        if((input == null) || (input.length() == 0)) {
-            return null;
+    public Date parse(final String input) {
+        final String toParse;
+        final String inputOrEmpty = input == null ? "" : input;
+        if(formatToParse == null) {
+            toParse = inputOrEmpty;
+        } else {
+            final String toFormat = String.format(formatToParse, inputOrEmpty);
+            try {
+                toParse = new SimpleDateFormat(toFormat).format(Calendar.getInstance().getTime());
+            } catch (Exception e) {
+                logger.trace("Could not parse input '{}'", input);
+                return null;
+            }
         }
 
-        final String toParse = String.format(formatToParse, input);
         final ParsePosition parsePosition = new ParsePosition(0);
         final Date date = dateFormat.get().parse(toParse, parsePosition);
         if(parsePosition.getIndex() == toParse.length()) {
-            final Calendar calendar = Calendar.getInstance();
-            calendar.setTime(date);
-            Utils.setCalendarDayStart(calendar);
-            return calendar.getTimeInMillis();
+            return date;
         } else {
             logger.trace("Could not parse input '{}' (formatted '{}')", input, toParse);
             return null;

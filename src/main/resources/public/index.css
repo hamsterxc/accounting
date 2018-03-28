@@ -7,6 +7,10 @@ table {
     margin: 10px 10px;
 }
 
+tr.filtered {
+    display: none;
+}
+
 td, th {
     padding: 5px;
 }

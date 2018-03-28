@@ -23,6 +23,7 @@ function refreshStatic() {
         currencies = currenciesResponse[0];
 
         populateMainHeader();
+        populateMainFilter();
         populateMainAdd();
         populateCurrency();
 
@@ -53,6 +54,7 @@ function refreshDynamic() {
 
         populateMainTotals(totalBefore, totalAfter);
         populateMainTransactions();
+        filterMainTransactions();
 
         const dateLower = new Date(boundary.lower);
         const date = new Date(dateLower.getUTCFullYear(), dateLower.getUTCMonth(), 1);

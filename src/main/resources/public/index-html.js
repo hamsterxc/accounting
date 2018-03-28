@@ -12,6 +12,61 @@ function buildMainHeader() {
         .join('');
 }
 
+function populateMainFilter() {
+    $('#main-filter').html(buildMainFilter());
+
+    accounts.forEach(account => {
+        setupFilteringInput('#main-filter-account' + account.id);
+    });
+    setupFilteringInput('#main-filter-category');
+    setupFilteringInput('#main-filter-comment');
+}
+
+function setupFilteringInput(selector) {
+    const element = $(selector);
+    element.off('change keyup select');
+    element.on('change keyup select', filterMainTransactions);
+}
+
+function buildMainFilter() {
+    return ['', '']
+        .concat(accounts.map(account => {
+            const id = 'main-filter-account' + account.id;
+            return '<input id="' + id + '" type="checkbox"/>'
+                + '<label for="' + id + '">Operation(s) present</label>';
+        }))
+        .concat([
+            '',
+            '<select id="main-filter-category">'
+            + '<option value="-1" selected/>'
+            + categories.map(category => '<option value="' + category.id + '">' + category.name + '</option>').join('')
+            + '</select>',
+            '<input id="main-filter-comment" type="text" placeholder="Comment substring" size="30"/>'
+        ])
+        .map(item => '<td>' + item + '</td>')
+        .join('');
+}
+
+function filterMainTransactions() {
+    const accountVisibility = accounts.reduce((value, account) => {
+        value[account.id] = $('#main-filter-account' + account.id).is(':checked');
+        return value;
+    }, {});
+    const category = Number($('#main-filter-category').val() || '-1');
+    const commentSubstring = ($('#main-filter-comment').val() || '').toLowerCase();
+
+    transactions.forEach(transaction => {
+        const isVisible = accounts.reduce((value, account) => {
+                return value && (!accountVisibility[account.id]
+                    || (findAll(transaction.operations, account.id, 'accountId').length > 0));
+            }, true)
+            && ((category === -1) || (category === transaction.categoryId))
+            && (transaction.comment.toLowerCase().indexOf(commentSubstring) !== -1);
+
+        $('#transaction' + transaction.id).toggleClass('filtered', !isVisible);
+    })
+}
+
 function populateMainAdd() {
     $('#main-add').html('<tr>' + buildMainTransactionEdit() + '</tr>');
     setupMainSubmit(0);

@@ -7,10 +7,6 @@ table {
     margin: 10px 10px;
 }
 
-tr.filtered {
-    display: none;
-}
-
 td, th {
     padding: 5px;
 }
@@ -24,6 +20,12 @@ td.controls input {
     width: 100%;
 }
 
+td.oneline div {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 0 2px 0;
+}
+
 table.summary {
     display: inline-table;
 }
@@ -32,12 +34,20 @@ span.warn {
     color: red;
 }
 
-span.oneline {
-    white-space: nowrap;
-}
-
 a.action {
     text-decoration: none;
     cursor: pointer;
     color: blue;
+}
+
+.oneline {
+    white-space: nowrap;
+}
+
+.filtered {
+    display: none;
+}
+
+.hidden {
+    background-color: lightgray;
 }

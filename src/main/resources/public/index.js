@@ -2,6 +2,7 @@ let accounts = [];
 let categories = [];
 let currencies = [];
 let transactions = [];
+let summaries = [];
 
 $(() => {
     $
@@ -18,14 +19,16 @@ function refreshStatic() {
         $.ajax('currency')
     ).then((accountsResponse, categoriesResponse, currenciesResponse) => {
         transactions = [];
-        accounts = accountsResponse[0].filter(account => account.visible);
-        categories = categoriesResponse[0].filter(category => category.visible);
+        summaries = [];
+        accounts = accountsResponse[0];
+        categories = categoriesResponse[0];
         currencies = currenciesResponse[0];
 
         populateMainHeader();
         populateMainFilter();
         populateMainAdd();
         populateCurrency();
+        filter();
 
         deferred.resolve();
     });
@@ -39,7 +42,6 @@ function refreshDynamic() {
     const today = new Date();
     const from = new Date(today.getUTCFullYear(), today.getUTCMonth() - 1, 1).getTime();
     const to = new Date(today.getUTCFullYear(), today.getUTCMonth() + 1, 1).getTime();
-    let summaries = [];
     $.when(
         $.ajax('transaction/runningtotal?to=' + from),
         $.ajax('transaction/runningtotal?to=' + to),
@@ -49,12 +51,12 @@ function refreshDynamic() {
         const totalBefore = totalBeforeResponse[0];
         const totalAfter = totalAfterResponse[0];
         const boundary = boundaryResponse[0];
-        transactions = transactionsResponse[0].transactions
-            .filter(transaction => transaction.visible && (find(categories, transaction.categoryId) !== undefined));
+        transactions = transactionsResponse[0].transactions;
+        summaries = [];
 
         populateMainTotals(totalBefore, totalAfter);
         populateMainTransactions();
-        filterMainTransactions();
+        filter();
 
         const dateLower = new Date(boundary.lower);
         const date = new Date(dateLower.getUTCFullYear(), dateLower.getUTCMonth(), 1);
@@ -71,7 +73,7 @@ function refreshDynamic() {
     }).then(() => {
         summaries = summaries.filter(item => item.items.length > 0);
         summaries.sort((a, b) => a.from - b.from);
-        populateSummary(summaries);
+        populateSummary();
 
         deferred.resolve();
     });

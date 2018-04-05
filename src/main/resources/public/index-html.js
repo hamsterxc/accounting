@@ -3,21 +3,34 @@ function populateMainHeader() {
 }
 
 function buildMainHeader() {
-    return ['', 'Date']
-        .concat(accounts.map(account => {
-            return account.name + ', ' + find(currencies, account.currencyId).symbol;
-        }))
-        .concat(['Total', 'Category', 'Comment'])
-        .map(item => '<th>' + item + '</th>')
+    return [
+            { text: '', id: 'main-header-actions' },
+            { text: 'Date', id: 'main-header-date' }
+        ]
+        .concat(accounts.map(account => { return {
+            text: account.name + ', ' + find(currencies, account.currencyId).symbol,
+            id: 'main-header-account' + account.id
+        } }))
+        .concat([
+            { text: 'Total', id: 'main-header-total' },
+            { text: 'Category', id: 'main-header-category' },
+            { text: 'Comment', id: 'main-header-comment' }
+        ])
+        .map(item => buildTh(item))
         .join('');
 }
 
 function populateMainFilter() {
     $('#main-filter').html(buildMainFilter());
 
+    setupFilteringInput('#main-filter-show-hidden');
+    $('#main-filter-cell-show-hidden').addClass('oneline');
+
     accounts.forEach(account => {
         setupFilteringInput('#main-filter-account' + account.id);
+        $('#main-filter-cell-account' + account.id).addClass('oneline');
     });
+
     setupFilteringInput('#main-filter-category');
     setupFilteringInput('#main-filter-comment');
 }
@@ -25,50 +38,96 @@ function populateMainFilter() {
 function setupFilteringInput(selector) {
     const element = $(selector);
     element.off('change keyup select');
-    element.on('change keyup select', filterMainTransactions);
+    element.on('change keyup select', filter);
 }
 
 function buildMainFilter() {
-    return ['', '']
+    return [
+            {
+                text: '<div><input id="main-filter-show-hidden" type="checkbox"/></div>'
+                    + '<label for="main-filter-show-hidden"><div>Show<br/>hidden</div></label>',
+                id: 'main-filter-cell-show-hidden'
+            },
+            { text: '' }
+        ]
         .concat(accounts.map(account => {
             const id = 'main-filter-account' + account.id;
-            return '<input id="' + id + '" type="checkbox"/>'
-                + '<label for="' + id + '">Operation(s) present</label>';
+            return {
+                text: '<div><input id="' + id + '" type="checkbox"/></div>'
+                    + '<label for="' + id + '"><div>Operation(s)<br/>present</div></label>',
+                id: 'main-filter-cell-account' + account.id
+            };
         }))
         .concat([
-            '',
-            '<select id="main-filter-category">'
-            + '<option value="-1" selected/>'
-            + categories.map(category => '<option value="' + category.id + '">' + category.name + '</option>').join('')
-            + '</select>',
-            '<input id="main-filter-comment" type="text" placeholder="Comment substring" size="30"/>'
+            { text: '' },
+            { text: '<select id="main-filter-category">'
+                + '<option id="main-filter-category-option-1" value="-1" selected/>'
+                + categories.map(category => '<option id="main-filter-category-option' + category.id
+                    + '" value="' + category.id + '">' + category.name + '</option>').join('')
+                + '</select>' },
+            { text: '<input id="main-filter-comment" type="text" placeholder="Comment substring" size="30"/>' }
         ])
-        .map(item => '<td>' + item + '</td>')
+        .map(item => buildTd(item))
         .join('');
 }
 
-function filterMainTransactions() {
+function filter() {
+    const showHidden = isChecked('#main-filter-show-hidden');
     const accountVisibility = accounts.reduce((value, account) => {
-        value[account.id] = $('#main-filter-account' + account.id).is(':checked');
+        value[account.id] = isChecked('#main-filter-account' + account.id);
         return value;
     }, {});
     const category = Number($('#main-filter-category').val() || '-1');
     const commentSubstring = ($('#main-filter-comment').val() || '').toLowerCase();
 
     transactions.forEach(transaction => {
-        const isVisible = accounts.reduce((value, account) => {
+        const isFiltered = !(
+            (transaction.visible || showHidden)
+            && ((category === -1) || (category === transaction.categoryId))
+            && (transaction.comment.toLowerCase().indexOf(commentSubstring) !== -1)
+            && accounts.reduce((value, account) => {
                 return value && (!accountVisibility[account.id]
                     || (findAll(transaction.operations, account.id, 'accountId').length > 0));
             }, true)
-            && ((category === -1) || (category === transaction.categoryId))
-            && (transaction.comment.toLowerCase().indexOf(commentSubstring) !== -1);
+        );
 
-        $('#transaction' + transaction.id).toggleClass('filtered', !isVisible);
-    })
+        toggleVisibility('#transaction' + transaction.id, transaction.visible, isFiltered);
+
+        accounts.forEach(account => {
+            toggleVisibilityItem('#transaction' + transaction.id + '-account' + account.id, account, showHidden);
+        });
+    });
+
+    accounts.forEach(account => {
+        toggleVisibilityItem('#main-header-account' + account.id, account, showHidden);
+        toggleVisibilityItem('#main-filter-cell-account' + account.id, account, showHidden);
+        toggleVisibilityItem('#main-total-before-account' + account.id, account, showHidden);
+        toggleVisibilityItem('#main-total-after-account' + account.id, account, showHidden);
+        toggleVisibilityItem('#transaction-edit-account' + account.id, account, showHidden);
+    });
+
+    categories.forEach(category => {
+        toggleVisibility('#main-filter-category-option' + category.id, category.visible, false);
+        toggleVisibilityItem('#transaction-edit-category-option' + category.id, category, showHidden);
+        summaries.forEach(summary => {
+            toggleVisibilityItem('#summary' + summary.from + '-category' + category.id, category, showHidden);
+        });
+    });
+}
+
+function toggleVisibility(selector, isVisible, isFiltered) {
+    const element = $(selector);
+    element.toggleClass('hidden', !isVisible);
+    element.toggleClass('filtered', isFiltered);
+}
+
+function toggleVisibilityItem(selector, item, showHidden) {
+    toggleVisibility(selector, item.visible, !item.visible && !showHidden);
 }
 
 function populateMainAdd() {
     $('#main-add').html('<tr>' + buildMainTransactionEdit() + '</tr>');
+    $('#transaction-edit-actions').addClass('controls');
     setupMainSubmit(0);
     $(buildInputSelector('date', 0)).focus();
 }
@@ -77,20 +136,25 @@ function buildMainTransactionEdit(transactionId) {
     const transaction = find(transactions, transactionId);
     const isPreset = transaction !== undefined;
     transactionId = isPreset ? transaction.id : 0;
-    return '<td class="controls">'
-        + (isPreset
-            ? '<input type="button" name="submit" value="Save" onClick="performTransactionSave(' + transactionId + ')"'
-                + buildOperationDataAttributes(transactionId) + '/><br/>'
-                + '<input type="button" name="cancel" value="Cancel" onClick="populateMainEditCancel(' + transactionId + ')"'
-                + buildOperationDataAttributes(transactionId) + '/>'
-            : '<input type="button" name="submit" value="Add" onClick="performTransactionAdd()"'
-                + buildOperationDataAttributes(transactionId) + '/>')
-        + '</td>'
-        + [
-            '<input type="text" name="date" size="10" placeholder="31.12[.[20]12]"'
-            + (isPreset ? ' value="' + formatDateTransaction(transaction.time) + '"' : '')
-            + buildOperationDataAttributes(transactionId)
-            + '/>'
+
+    return [
+            {
+                text: (isPreset
+                    ? '<input type="button" name="submit" value="Save" onClick="performTransactionSave(' + transactionId + ')"'
+                        + buildOperationDataAttributes(transactionId) + '/><br/>'
+                        + '<input type="button" name="cancel" value="Cancel" onClick="populateMainEditCancel(' + transactionId + ')"'
+                        + buildOperationDataAttributes(transactionId) + '/>'
+                    : '<input type="button" name="submit" value="Add" onClick="performTransactionAdd()"'
+                        + buildOperationDataAttributes(transactionId) + '/>'),
+                id: 'transaction-edit-actions'
+            },
+            {
+                text: '<input type="text" name="date" size="10" placeholder="31.12[.[20]12]"'
+                + (isPreset ? ' value="' + formatDateTransaction(transaction.time) + '"' : '')
+                + buildOperationDataAttributes(transactionId)
+                + '/>',
+                id: 'transaction-edit-date'
+            }
         ]
         .concat(accounts.map(account => {
             const operations = isPreset ? findAll(transaction.operations, account.id, 'accountId') : [];
@@ -98,27 +162,38 @@ function buildMainTransactionEdit(transactionId) {
                 operations.push(buildGenericOperation(account.id));
             }
 
-            return '<input type="hidden" name="data-holder" ' + buildOperationDataAttributes(transactionId, account.id, operations.length) + '/>' +
-                operations
-                    .map((operation, index) => buildOperationEditLine(transactionId, account.id, operation, operations.length <= 1, index))
-                    .join('')
-                    .slice(5);
+            return {
+                text: '<input type="hidden" name="data-holder" '
+                    + buildOperationDataAttributes(transactionId, account.id, operations.length) + '/>' +
+                    operations
+                        .map((operation, index) => buildOperationEditLine(transactionId, account.id, operation, operations.length <= 1, index))
+                        .join('')
+                        .slice(5),
+                id: 'transaction-edit-account' + account.id
+            };
         }))
         .concat(
-            '',
-            '<select name="categoryId"' + buildOperationDataAttributes(transactionId) + '>'
-            + categories.map(
-                category => '<option value="' + category.id + '"'
-                    + (isPreset && (category.id === transaction.categoryId) ? ' selected' : '')
-                    + '>' + category.name + '</option>'
-            ).join('')
-            + '</select>',
-            '<input type="text" name="comment" placeholder="Comment" size="30"'
-                + (isPreset ? ' value="' + transaction.comment + '"' : '')
-                + buildOperationDataAttributes(transactionId)
-                + '/>'
+            { text: '', id: 'transaction-edit-total' },
+            {
+                text: '<select name="categoryId"' + buildOperationDataAttributes(transactionId) + '>'
+                    + categories.map(
+                        category => '<option id="transaction-edit-category-option' + category.id
+                            + '" value="' + category.id + '"'
+                            + (isPreset && (category.id === transaction.categoryId) ? ' selected' : '')
+                            + '>' + category.name + '</option>'
+                    ).join('')
+                    + '</select>',
+                id: 'transaction-edit-category'
+            },
+            {
+                text: '<input type="text" name="comment" placeholder="Comment" size="30"'
+                    + (isPreset ? ' value="' + transaction.comment + '"' : '')
+                    + buildOperationDataAttributes(transactionId)
+                    + '/>',
+                id: 'transaction-edit-comment'
+            }
         )
-        .map(item => '<td>' + item + '</td>')
+        .map(item => buildTd(item))
         .join('');
 }
 
@@ -218,6 +293,8 @@ function buildInputSelector(name, transactionId) {
 function populateMainEdit(transactionId) {
     $('#main-add').html('');
     $('#transaction' + transactionId).html(buildMainTransactionEdit(transactionId));
+    filter();
+    $('#transaction-edit-actions').addClass('controls');
     setupMainSubmit(transactionId);
 }
 
@@ -233,27 +310,43 @@ function setupMainSubmit(transactionId) {
 
 function populateMainEditCancel(transactionId) {
     $('#transaction' + transactionId).html(buildMainTransaction(transactionId));
+    $('#transaction' + transactionId + '-actions').addClass('controls');
     populateMainAdd();
+    filter();
 }
 
 function populateMainTotals(totalBefore, totalAfter) {
-    $('#main-total-before').html(buildMainTotal(totalBefore));
-    $('#main-total-after').html(buildMainTotal(totalAfter));
+    $('#main-total-before').html(buildMainTotal(totalBefore, 'before'));
+    $('#main-total-after').html(buildMainTotal(totalAfter, 'after'));
 }
 
-function buildMainTotal(total) {
-    return ['', '']
+function buildMainTotal(total, id) {
+    const idPrefix = 'main-total-' + id + '-';
+    return [
+            { text: '', id: idPrefix + 'actions' },
+            { text: '', id: idPrefix + 'date' }
+        ]
         .concat(accounts.map(account => {
             const value = find(total.items, account.id);
-            return formatNumber(value === undefined ? 0 : value.amount);
+            return {
+                text: formatNumber(value === undefined ? 0 : value.amount),
+                id: idPrefix + 'account' + account.id
+            };
         }))
-        .concat(formatNumber(total.total), '', '')
-        .map(item => '<th>' + item + '</th>')
+        .concat([
+            { text: formatNumber(total.total), id: idPrefix + 'total' },
+            { text: '', id: idPrefix + 'category' },
+            { text: '', id: idPrefix + 'comment' }
+        ])
+        .map(item => buildTh(item))
         .join('');
 }
 
 function populateMainTransactions() {
     $('#main-body').html(buildMainTransactions());
+    transactions.forEach(transaction => {
+        $('#transaction' + transaction.id + '-actions').addClass('controls');
+    });
 }
 
 function buildMainTransactions() {
@@ -266,27 +359,43 @@ function buildMainTransaction(transactionId) {
     const transaction = find(transactions, transactionId);
     const category = find(categories, transaction.categoryId);
     const categoryName = category === undefined ? '' : category.name;
+    const idPrefix = 'transaction' + transactionId + '-';
 
-    return [['<a class="action" onClick="populateMainEdit(' + transactionId + ')">E</a>',
-            '<a class="action" onClick="performAction(' + transactionId + ',\'moveup\');">&#x2191;</a>',
-            '<a class="action" onClick="performAction(' + transactionId + ',\'movedown\');">&#x2193;</a>',
-            '<a class="action" onClick="performAction(' + transactionId + ',\'delete\');"><span class="warn">X</span></a>']
-            .join('&#160;')]
-            .concat(formatDateTransaction(transaction.time))
-            .concat(accounts.map(account => {
-                const operations = findAll(transaction.operations, account.id, 'accountId');
-                return operations.length === 0 ? '' : operations
-                    .map(operation => {
-                        const operationCurrencyString = buildOperationCurrencyString(operation, operations.length <= 1);
-                        const operationString = formatNumber(operation.amount, operationCurrencyString);
-                        return operation.active ? operationString : '<s>' + operationString + '</s>';
-                    })
-                    .map(operationString => '<span class="oneline">' + operationString + '</span>')
-                    .join('<br/>');
-            }))
-            .concat(formatNumber(transaction.total), categoryName, transaction.comment)
-            .map(item => '<td>' + item + '</td>')
-            .join('');
+    return [
+            {
+                text: ['<a class="action" onClick="populateMainEdit(' + transactionId + ')">E</a>',
+                    '<a class="action" onClick="performAction(' + transactionId + ',\'moveup\');">&#x2191;</a>',
+                    '<a class="action" onClick="performAction(' + transactionId + ',\'movedown\');">&#x2193;</a>',
+                    '<a class="action" onClick="performAction(' + transactionId + ',\'delete\');"><span class="warn">X</span></a>']
+                    .join('&#160;'),
+                id: idPrefix + 'actions'
+            },
+            {
+                text: formatDateTransaction(transaction.time),
+                id: idPrefix + 'date'
+            }
+        ]
+        .concat(accounts.map(account => {
+            const operations = findAll(transaction.operations, account.id, 'accountId');
+            return {
+                text: operations.length === 0 ? '' : operations
+                        .map(operation => {
+                            const operationCurrencyString = buildOperationCurrencyString(operation, operations.length <= 1);
+                            const operationString = formatNumber(operation.amount, operationCurrencyString);
+                            return operation.active ? operationString : '<s>' + operationString + '</s>';
+                        })
+                        .map(operationString => '<span class="oneline">' + operationString + '</span>')
+                        .join('<br/>'),
+                id: idPrefix + 'account' + account.id
+            };
+        }))
+        .concat([
+            { text: formatNumber(transaction.total), id: idPrefix + 'total' },
+            { text: categoryName, id: idPrefix + 'category' },
+            { text: transaction.comment, id: idPrefix + 'comment' }
+        ])
+        .map(item => buildTd(item))
+        .join('');
 }
 
 function buildOperationCurrencyString(operation, isAlone) {
@@ -309,7 +418,7 @@ function buildCurrency() {
         + '</table>';
 }
 
-function populateSummary(summaries) {
+function populateSummary() {
     $('#summary').html(summaries
         .map(summary => buildSummary(summary))
         .join(''));
@@ -317,17 +426,44 @@ function populateSummary(summaries) {
 
 function buildSummary(summary) {
     return '<table class="summary">'
-        + ['<th colspan="2">' + formatDateSummary(summary.from) + '</th>']
+        + [{ text: '<th colspan="2">' + formatDateSummary(summary.from) + '</th>' }]
             .concat(
                 categories.map(category => {
                     const item = find(summary.items, category.id);
-                    return [category.name, formatNumber(item === undefined ? 0 : item.amount)]
-                        .map(item => '<td>' + item + '</td>')
-                        .join('');
+                    return {
+                        text: [
+                                { text: category.name },
+                                { text: formatNumber(item === undefined ? 0 : item.amount) }
+                            ]
+                            .map(item => buildTd(item))
+                            .join(''),
+                        id: 'summary' + summary.from + '-category' + category.id
+                    };
                 })
             )
-            .map(item => '<tr>' + item + '</tr>')
-            .concat(['<th colspan="2">' + formatNumber(summary.total) + '</th>'])
+            .concat([{ text: '<th colspan="2">' + formatNumber(summary.total) + '</th>' }])
+            .map(item => buildTr(item))
             .join('')
         + '</table>';
+}
+
+function isChecked(selector) {
+    return $(selector).is(':checked');
+}
+
+function buildTag(tag, text, id) {
+    const idString = ((id || '') === '') ? '' : (' id="' + id + '"');
+    return '<' + tag + idString + '>' + text + '</' + tag + '>';
+}
+
+function buildTr(data) {
+    return buildTag('tr', data.text, data.id);
+}
+
+function buildTh(data) {
+    return buildTag('th', data.text, data.id);
+}
+
+function buildTd(data) {
+    return buildTag('td', data.text, data.id);
 }

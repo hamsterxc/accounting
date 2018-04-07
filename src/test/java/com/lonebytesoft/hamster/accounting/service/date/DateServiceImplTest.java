@@ -59,7 +59,7 @@ public class DateServiceImplTest {
     }
 
     private void verify(final String input, final Consumer<Calendar> calendarModifier) {
-        final Calendar calendar = Calendar.getInstance();
+        final Calendar calendar = dateService.obtainCalendar();
         calendarModifier.accept(calendar);
         calendar.set(Calendar.MILLISECOND, 0);
         calendar.set(Calendar.SECOND, 0);

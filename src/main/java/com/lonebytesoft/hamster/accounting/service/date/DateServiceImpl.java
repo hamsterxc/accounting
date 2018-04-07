@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
+import java.util.TimeZone;
 
 @Component
 public class DateServiceImpl implements DateService {
@@ -19,8 +20,13 @@ public class DateServiceImpl implements DateService {
     );
 
     @Override
+    public Calendar obtainCalendar() {
+        return Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+    }
+
+    @Override
     public long calculateDayStart(final long time, final int daysDelta) {
-        final Calendar calendar = Calendar.getInstance();
+        final Calendar calendar = obtainCalendar();
         calendar.setTimeInMillis(time);
         setCalendarDayStart(calendar);
         calendar.add(Calendar.DAY_OF_MONTH, daysDelta);
@@ -35,7 +41,7 @@ public class DateServiceImpl implements DateService {
                 .filter(Objects::nonNull)
                 .findFirst()
                 .map(date -> {
-                    final Calendar calendar = Calendar.getInstance();
+                    final Calendar calendar = obtainCalendar();
                     calendar.setTime(date);
                     setCalendarDayStart(calendar);
                     return calendar.getTimeInMillis();

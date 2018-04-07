@@ -6,8 +6,8 @@ import org.slf4j.LoggerFactory;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
+import java.util.TimeZone;
 
 class DateParser {
 
@@ -21,7 +21,7 @@ class DateParser {
     }
 
     public DateParser(final String format, final String formatToParse) {
-        this.dateFormat = ThreadLocal.withInitial(() -> new SimpleDateFormat(format));
+        this.dateFormat = ThreadLocal.withInitial(() -> obtainDateFormat(format));
         this.formatToParse = formatToParse;
     }
 
@@ -33,7 +33,7 @@ class DateParser {
         } else {
             final String toFormat = String.format(formatToParse, inputOrEmpty);
             try {
-                toParse = new SimpleDateFormat(toFormat).format(Calendar.getInstance().getTime());
+                toParse = obtainDateFormat(toFormat).format(new Date());
             } catch (Exception e) {
                 logger.trace("Could not parse input '{}'", input);
                 return null;
@@ -48,6 +48,12 @@ class DateParser {
             logger.trace("Could not parse input '{}' (formatted '{}')", input, toParse);
             return null;
         }
+    }
+
+    private DateFormat obtainDateFormat(final String pattern) {
+        final DateFormat dateFormat = new SimpleDateFormat(pattern);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return dateFormat;
     }
 
 }

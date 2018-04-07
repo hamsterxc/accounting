@@ -10,6 +10,7 @@ import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
+import com.lonebytesoft.hamster.accounting.service.date.DateService;
 import com.lonebytesoft.hamster.accounting.service.transaction.TransactionAction;
 import com.lonebytesoft.hamster.accounting.service.transaction.TransactionService;
 import org.junit.Assert;
@@ -56,6 +57,9 @@ public class TransactionServiceImplTest {
     @Autowired
     private TransactionService transactionService;
 
+    @Autowired
+    private DateService dateService;
+
     private int unique = 0;
     private List<Long> ids = new ArrayList<>();
     private Map<Long, Long> times = new HashMap<>();
@@ -80,7 +84,7 @@ public class TransactionServiceImplTest {
 
     // June 15th, 10:00 AM
     private long getBaseTime() {
-        final Calendar calendar = Calendar.getInstance();
+        final Calendar calendar = dateService.obtainCalendar();
         calendar.set(2000, Calendar.JUNE, 15, 10, 0, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         return calendar.getTimeInMillis();
@@ -153,7 +157,7 @@ public class TransactionServiceImplTest {
     }
 
     private long addTime(final long time, final int days, final int hours) {
-        final Calendar calendar = Calendar.getInstance();
+        final Calendar calendar = dateService.obtainCalendar();
         calendar.setTimeInMillis(time);
         calendar.add(Calendar.DAY_OF_MONTH, days);
         calendar.add(Calendar.HOUR_OF_DAY, hours);

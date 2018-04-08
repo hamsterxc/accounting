@@ -41,6 +41,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -79,13 +80,18 @@ public class TransactionController {
     }
 
     @RequestMapping(method = RequestMethod.GET, path = "/runningtotal")
-    public SummaryView getRunningTotal(@RequestParam(name = "from", defaultValue = "0") final Long from,
-                                       @RequestParam(name = "to", required = false) final Long paramTo) {
-        final long to = calculateUpperBound(paramTo);
+    public SummaryView getRunningTotal(
+            @RequestParam(name = "from", required = false) final Long from,
+            @RequestParam(name = "fromDate", defaultValue = "") final String fromDate,
+            @RequestParam(name = "to", required = false) final Long to,
+            @RequestParam(name = "toDate", defaultValue = "") final String toDate
+    ) {
+        final long fromTimestamp = parseTimestampParam(from, fromDate, () -> 0L);
+        final long toTimestamp = parseTimestampParam(to, toDate, () -> dateService.calculateDayStart(System.currentTimeMillis(), 1));
 
         final Map<Long, Double> accountsRunningTotal = new HashMap<>();
         final Config config = configService.get();
-        transactionRepository.findAllBetweenTime(from, to)
+        transactionRepository.findAllBetweenTime(fromTimestamp, toTimestamp)
                 .forEach(transaction -> {
                     transaction.getOperations()
                             .stream()
@@ -101,13 +107,13 @@ public class TransactionController {
                 });
 
         final Double total = accountsRunningTotal.remove(null);
-        return mapSummaryToView(from, to, accountsRunningTotal, total == null ? 0 : total);
+        return mapSummaryToView(fromTimestamp, toTimestamp, accountsRunningTotal, total == null ? 0 : total);
     }
 
     @RequestMapping(method = RequestMethod.GET, path = "/summary")
     public SummaryView getSummary(@RequestParam(name = "from", defaultValue = "0") final Long from,
                                   @RequestParam(name = "to", required = false) final Long paramTo) {
-        final long to = calculateUpperBound(paramTo);
+        final long to = paramTo == null ? System.currentTimeMillis() : paramTo;
 
         final Map<Long, Double> items = new HashMap<>();
         final Config config = configService.get();
@@ -147,20 +153,26 @@ public class TransactionController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public TransactionsView getTransactions(@RequestParam(name = "from", defaultValue = "0") final Long from,
-                                            @RequestParam(name = "to", required = false) final Long paramTo) {
-        final long to = calculateUpperBound(paramTo);
-
-        final TransactionsView transactionsView = new TransactionsView();
+    public TransactionsView getTransactions(
+            @RequestParam(name = "from", required = false) final Long from,
+            @RequestParam(name = "fromDate", defaultValue = "") final String fromDate,
+            @RequestParam(name = "to", required = false) final Long to,
+            @RequestParam(name = "toDate", defaultValue = "") final String toDate
+    ) {
+        final long fromTimestamp = parseTimestampParam(from, fromDate, () -> 0L);
+        final long toTimestamp = parseTimestampParam(to, toDate, () -> dateService.calculateDayStart(System.currentTimeMillis(), 1));
 
         final Config config = configService.get();
-        transactionsView.setTransactions(transactionRepository.findAllBetweenTime(from, to)
-                .stream()
-                .map(transaction -> mapTransactionToView(transaction, config))
-                .collect(Collectors.toList()));
 
-        transactionsView.setFrom(from);
-        transactionsView.setTo(to);
+        final TransactionsView transactionsView = new TransactionsView();
+        transactionsView.setTransactions(
+                transactionRepository.findAllBetweenTime(fromTimestamp, toTimestamp)
+                        .stream()
+                        .map(transaction -> mapTransactionToView(transaction, config))
+                        .collect(Collectors.toList())
+        );
+        transactionsView.setFrom(fromTimestamp);
+        transactionsView.setTo(toTimestamp);
         return transactionsView;
     }
 
@@ -220,8 +232,21 @@ public class TransactionController {
         return actionResultView;
     }
 
-    private long calculateUpperBound(final Long to) {
-        return to == null ? System.currentTimeMillis() : to;
+    private long parseTimestampParam(final Long param, final String paramDate, final Supplier<Long> defaultValue) {
+        if(param != null) {
+            return param;
+        }
+
+        if((paramDate == null) || paramDate.equals("")) {
+            return defaultValue.get();
+        }
+
+        final Long parsed = dateService.parse(paramDate);
+        if(parsed != null) {
+            return parsed;
+        }
+
+        return defaultValue.get();
     }
 
     private double convert(final Currency from, final Currency to, final double amount) {

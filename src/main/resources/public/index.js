@@ -4,7 +4,14 @@ let currencies = [];
 let transactions = [];
 let summaries = [];
 
+let transactionsDateFrom = '';
+let transactionsDateTo = '';
+
 $(() => {
+    const today = new Date();
+    transactionsDateFrom = formatDateTransaction(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+    transactionsDateTo = formatDateTransaction(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
+
     $
         .when(refreshStatic())
         .then(() => refreshDynamic());
@@ -39,20 +46,20 @@ function refreshStatic() {
 function refreshDynamic() {
     let deferred = new $.Deferred();
 
-    const today = new Date();
-    const from = new Date(today.getUTCFullYear(), today.getUTCMonth() - 1, 1).getTime();
-    const to = new Date(today.getUTCFullYear(), today.getUTCMonth() + 1, 1).getTime();
     $.when(
-        $.ajax('transaction/runningtotal?to=' + from),
-        $.ajax('transaction/runningtotal?to=' + to),
+        $.ajax('transaction/runningtotal?toDate=' + transactionsDateFrom),
+        $.ajax('transaction/runningtotal?toDate=' + transactionsDateTo),
         $.ajax('transaction/boundary'),
-        $.ajax('transaction?from=' + from + '&to=' + to)
+        $.ajax('transaction?fromDate=' + transactionsDateFrom + '&toDate=' + transactionsDateTo)
     ).then((totalBeforeResponse, totalAfterResponse, boundaryResponse, transactionsResponse) => {
         const totalBefore = totalBeforeResponse[0];
         const totalAfter = totalAfterResponse[0];
         const boundary = boundaryResponse[0];
         transactions = transactionsResponse[0].transactions;
         summaries = [];
+
+        transactionsDateFrom = formatDateTransaction(transactionsResponse[0].from);
+        transactionsDateTo = formatDateTransaction(transactionsResponse[0].to);
 
         populateMainTotals(totalBefore, totalAfter);
         populateMainTransactions();

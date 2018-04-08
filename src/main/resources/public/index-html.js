@@ -33,12 +33,21 @@ function populateMainFilter() {
 
     setupFilteringInput('#main-filter-category');
     setupFilteringInput('#main-filter-comment');
+
+    setupFilteringDateInput('#main-filter-date-from');
+    setupFilteringDateInput('#main-filter-date-to');
 }
 
 function setupFilteringInput(selector) {
     const element = $(selector);
     element.off('change keyup select');
     element.on('change keyup select', filter);
+}
+
+function setupFilteringDateInput(selector) {
+    const element = $(selector);
+    element.off('blur');
+    element.on('blur', filterDates);
 }
 
 function buildMainFilter() {
@@ -48,7 +57,11 @@ function buildMainFilter() {
                     + '<label for="main-filter-show-hidden"><div>Show<br/>hidden</div></label>',
                 id: 'main-filter-cell-show-hidden'
             },
-            { text: '' }
+            {
+                text: '<input id="main-filter-date-from" type="text" size="10" placeholder="Date from"/><br/>'
+                    + '<input id="main-filter-date-to" type="text" size="10" placeholder="Date to" style="margin-top:2px;"/>',
+                id: 'main-filter-cell-date'
+            }
         ]
         .concat(accounts.map(account => {
             const id = 'main-filter-account' + account.id;
@@ -113,6 +126,9 @@ function filter() {
             toggleVisibilityItem('#summary' + summary.from + '-category' + category.id, category, showHidden);
         });
     });
+
+    $('#main-filter-date-from').val(transactionsDateFrom);
+    $('#main-filter-date-to').val(transactionsDateTo);
 }
 
 function toggleVisibility(selector, isVisible, isFiltered) {
@@ -123,6 +139,12 @@ function toggleVisibility(selector, isVisible, isFiltered) {
 
 function toggleVisibilityItem(selector, item, showHidden) {
     toggleVisibility(selector, item.visible, !item.visible && !showHidden);
+}
+
+function filterDates() {
+    transactionsDateFrom = $('#main-filter-date-from').val();
+    transactionsDateTo = $('#main-filter-date-to').val();
+    refreshDynamic();
 }
 
 function populateMainAdd() {
@@ -426,7 +448,10 @@ function populateSummary() {
 
 function buildSummary(summary) {
     return '<table class="summary">'
-        + [{ text: '<th colspan="2">' + formatDateSummary(summary.from) + '</th>' }]
+            + [{
+                text: '<th colspan="2"><a class="action" onClick="filterDatesBySummary(' + summary.from + ',' + summary.to
+                    + ')">' + formatDateSummary(summary.from) + '</a></th>'
+            }]
             .concat(
                 categories.map(category => {
                     const item = find(summary.items, category.id);
@@ -445,6 +470,12 @@ function buildSummary(summary) {
             .map(item => buildTr(item))
             .join('')
         + '</table>';
+}
+
+function filterDatesBySummary(from, to) {
+    $('#main-filter-date-from').val(formatDateTransaction(from));
+    $('#main-filter-date-to').val(formatDateTransaction(to));
+    filterDates();
 }
 
 function isChecked(selector) {

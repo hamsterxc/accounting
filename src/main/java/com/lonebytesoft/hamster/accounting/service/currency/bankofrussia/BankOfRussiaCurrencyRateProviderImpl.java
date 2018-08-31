@@ -1,5 +1,6 @@
 package com.lonebytesoft.hamster.accounting.service.currency.bankofrussia;
 
+import com.lonebytesoft.hamster.accounting.service.currency.CurrencyRateCachingProvider;
 import com.lonebytesoft.hamster.accounting.service.currency.CurrencyRateProvider;
 import com.lonebytesoft.hamster.accounting.service.date.DateService;
 import org.slf4j.Logger;
@@ -22,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
-public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvider {
+public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvider, CurrencyRateCachingProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(BankOfRussiaCurrencyRateProviderImpl.class);
 
@@ -118,6 +119,12 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
         return ISO_CODE_DEFAULT.equals(isoCode)
                 ? RATE_DEFAULT
                 : Optional.ofNullable(rates.get(isoCode)).orElseThrow(() -> new BankOfRussiaException("Unknown currency ISO code: " + isoCode));
+    }
+
+    @Override
+    public void invalidateCache() {
+        final long dayStart = dateService.calculateDayStart(System.currentTimeMillis(), 0);
+        dailyRates.remove(dayStart);
     }
 
     private static class BankOfRussiaException extends RuntimeException {

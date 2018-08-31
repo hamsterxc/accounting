@@ -33,11 +33,18 @@ public class CurrencyServiceImpl implements CurrencyService {
     }
 
     @Override
-    public void updateAllCurrenciesValue() {
+    public void updateCurrencyValues() {
         currencyRepository.save(StreamSupport.stream(currencyRepository.findAll().spliterator(), false)
                 .peek(currency -> currency.setValue(getActualCurrencyValue(currency)))
                 .collect(Collectors.toList())
         );
+    }
+
+    @Override
+    public void updateCurrencyRates() {
+        if(currencyRateProvider instanceof CurrencyRateCachingProvider) {
+            ((CurrencyRateCachingProvider) currencyRateProvider).invalidateCache();
+        }
     }
 
 }

@@ -1,5 +1,6 @@
 package com.lonebytesoft.hamster.accounting.model
 
+import java.util.stream.Collectors
 import javax.persistence.Column
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
@@ -12,7 +13,7 @@ import javax.persistence.UniqueConstraint
 
 @Entity
 @Table(uniqueConstraints = arrayOf(UniqueConstraint(columnNames = arrayOf("name", "currency_id"))))
-class Account {
+class Account: Ordered {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -26,11 +27,19 @@ class Account {
     lateinit var currency: Currency
 
     @Column(nullable = false)
-    var ordering: Long = 0
+    override var ordering: Long = 0
     
     @Column(nullable = false)
     var visible: Boolean = true
 
     override fun toString(): String = "Account(id=$id, name='$name', currency=$currency, ordering=$ordering, visible=$visible)"
+
+    fun toUserString(): String = "#$id '$name'"
+
+    companion object {
+        @JvmStatic
+        fun toUserString(accounts: Collection<Account>): String =
+                accounts.stream().map { it.toUserString() }.collect(Collectors.joining(", "))
+    }
 
 }

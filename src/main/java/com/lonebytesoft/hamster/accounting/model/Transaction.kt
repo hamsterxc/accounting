@@ -1,6 +1,9 @@
 package com.lonebytesoft.hamster.accounting.model
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.stream.Collectors
 import javax.persistence.CascadeType
 import javax.persistence.Column
 import javax.persistence.Entity
@@ -37,5 +40,15 @@ class Transaction {
 
     override fun toString(): String = "Transaction(id=$id, time='" + Date(time) +
             "', category=$category, comment='$comment', visible=$visible, operations=$operations)"
+
+    fun toUserString(): String = "#$id ${TRANSACTION_DATE_FORMAT.get().format(Date(time))} '$comment'"
+
+    companion object {
+        val TRANSACTION_DATE_FORMAT: ThreadLocal<DateFormat> = ThreadLocal.withInitial { SimpleDateFormat("dd MMM yyyy") }
+
+        @JvmStatic
+        fun toUserString(transactions: Collection<Transaction>): String =
+                transactions.stream().map { it.toUserString() }.collect(Collectors.joining(", "))
+    }
 
 }

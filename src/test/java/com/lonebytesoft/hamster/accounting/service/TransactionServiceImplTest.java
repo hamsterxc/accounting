@@ -11,7 +11,6 @@ import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.service.date.DateService;
-import com.lonebytesoft.hamster.accounting.service.transaction.TransactionAction;
 import com.lonebytesoft.hamster.accounting.service.transaction.TransactionService;
 import org.junit.Assert;
 import org.junit.Before;
@@ -331,7 +330,7 @@ public class TransactionServiceImplTest {
 
     private void performTimeAction(final long id, final boolean moveEarlier) {
         final Transaction transaction = getTransaction(id);
-        final TransactionAction action = moveEarlier ? TransactionAction.MOVE_EARLIER : TransactionAction.MOVE_LATER;
+        final EntityAction action = moveEarlier ? EntityAction.MOVE_UP : EntityAction.MOVE_DOWN;
         transactionService.performTimeAction(transaction, action);
     }
 

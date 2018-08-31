@@ -2,6 +2,7 @@ package com.lonebytesoft.hamster.accounting.service.transaction;
 
 import com.lonebytesoft.hamster.accounting.model.Transaction;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
+import com.lonebytesoft.hamster.accounting.service.EntityAction;
 import com.lonebytesoft.hamster.accounting.service.date.DateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,10 +28,10 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public void performTimeAction(Transaction transaction, TransactionAction action) {
+    public void performTimeAction(Transaction transaction, EntityAction action) {
         assertTransactionTimeAction(action);
 
-        final Transaction closest = action == TransactionAction.MOVE_EARLIER
+        final Transaction closest = action == EntityAction.MOVE_UP
                 ? transactionRepository.findFirstBefore(transaction.getTime())
                 : transactionRepository.findFirstAfter(transaction.getTime());
         logger.debug("Performing time action {}: {}, closest {}", action, transaction, closest);
@@ -49,8 +50,8 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
-    private void assertTransactionTimeAction(final TransactionAction action) {
-        if((action != TransactionAction.MOVE_EARLIER) && (action != TransactionAction.MOVE_LATER)) {
+    private void assertTransactionTimeAction(final EntityAction action) {
+        if((action != EntityAction.MOVE_UP) && (action != EntityAction.MOVE_DOWN)) {
             throw new IllegalArgumentException("Unexpected transaction time action: " + action);
         }
     }
@@ -69,21 +70,21 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private void moveInAdjacentDays(final Transaction transaction, final Transaction closest,
-                                    final TransactionAction action) {
+                                    final EntityAction action) {
         assertTransactionTimeAction(action);
 
         final long transactionTime = transaction.getTime();
         final long closestTime = closest.getTime();
 
         final long threshold = dateService.calculateDayStart(
-                action == TransactionAction.MOVE_EARLIER ? transactionTime : closestTime, 0);
+                action == EntityAction.MOVE_UP ? transactionTime : closestTime, 0);
         final long diff = Math.abs(threshold - closestTime);
         if(diff > 1) {
             transaction.setTime(Math.min(threshold, closestTime) + diff / 2);
             logger.debug("Performing time action, move in adjacent days: {}", transaction);
             transactionRepository.save(transaction);
         } else {
-            if(action == TransactionAction.MOVE_EARLIER) {
+            if(action == EntityAction.MOVE_UP) {
                 rebalance(dateService.calculateDayStart(closestTime, 0), threshold);
             } else {
                 rebalance(threshold, dateService.calculateDayStart(closestTime, 1));
@@ -92,14 +93,14 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
-    private void moveLone(final Transaction transaction, final TransactionAction action) {
+    private void moveLone(final Transaction transaction, final EntityAction action) {
         assertTransactionTimeAction(action);
 
         final long transactionTime = transaction.getTime();
 
         final long start;
         final long end;
-        if(action == TransactionAction.MOVE_EARLIER) {
+        if(action == EntityAction.MOVE_UP) {
             start = dateService.calculateDayStart(transactionTime, -1);
             end = dateService.calculateDayStart(transactionTime, 0);
         } else {
@@ -144,7 +145,7 @@ public class TransactionServiceImpl implements TransactionService {
         logger.debug("Saving last-in-day transaction {}", transaction);
 
         final Transaction added = transactionRepository.save(transaction);
-        performTimeAction(added, TransactionAction.MOVE_EARLIER);
+        performTimeAction(added, EntityAction.MOVE_UP);
 
         return added;
     }

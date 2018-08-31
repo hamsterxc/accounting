@@ -1,8 +1,6 @@
 package com.lonebytesoft.hamster.accounting.controller.view
 
-class CurrencyView {
-
-    var id: Long = 0
+class CurrencyInputView {
 
     var code: String = ""
 

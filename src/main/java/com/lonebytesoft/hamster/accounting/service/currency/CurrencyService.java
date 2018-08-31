@@ -6,6 +6,8 @@ public interface CurrencyService {
 
     double getActualCurrencyValue(Currency currency);
 
-    void updateAllCurrenciesValue();
+    void updateCurrencyValues();
+
+    void updateCurrencyRates();
 
 }

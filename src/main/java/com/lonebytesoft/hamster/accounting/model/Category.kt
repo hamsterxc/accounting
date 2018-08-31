@@ -7,7 +7,7 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 
 @Entity
-class Category {
+class Category: Ordered {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -17,7 +17,7 @@ class Category {
     var name: String = ""
 
     @Column(nullable = false)
-    var ordering: Long = 0
+    override var ordering: Long = 0
 
     @Column(nullable = false)
     var visible: Boolean = true

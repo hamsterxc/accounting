@@ -18,9 +18,9 @@ import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
+import com.lonebytesoft.hamster.accounting.service.EntityAction;
 import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
 import com.lonebytesoft.hamster.accounting.service.date.DateService;
-import com.lonebytesoft.hamster.accounting.service.transaction.TransactionAction;
 import com.lonebytesoft.hamster.accounting.service.transaction.TransactionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,15 +210,15 @@ public class TransactionController {
 
     @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
     public ActionResultView performTransactionAction(@PathVariable final long id,
-                                                     @PathVariable final TransactionAction action) {
+                                                     @PathVariable final EntityAction action) {
         final Transaction transaction = transactionRepository.findOne(id);
         if(transaction == null) {
             throw new TransactionInputException("Could not find transaction, id=" + id);
         }
 
         switch(action) {
-            case MOVE_EARLIER:
-            case MOVE_LATER:
+            case MOVE_UP:
+            case MOVE_DOWN:
                 transactionService.performTimeAction(transaction, action);
                 break;
 

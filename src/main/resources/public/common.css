@@ -26,7 +26,7 @@ td.oneline div {
     margin: 0 0 2px 0;
 }
 
-table.summary {
+table.inlined {
     display: inline-table;
 }
 

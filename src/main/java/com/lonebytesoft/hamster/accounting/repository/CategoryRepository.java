@@ -10,4 +10,14 @@ public interface CategoryRepository extends CrudRepository<Category, Long> {
     @Query("SELECT c FROM Category c ORDER BY ordering ASC")
     Iterable<Category> findAll();
 
+    Category findFirstByOrderingGreaterThanOrderByOrderingAsc(long ordering);
+    default Category findFirstAfter(long ordering) {
+        return findFirstByOrderingGreaterThanOrderByOrderingAsc(ordering);
+    }
+
+    Category findFirstByOrderingLessThanOrderByOrderingDesc(long ordering);
+    default Category findFirstBefore(long ordering) {
+        return findFirstByOrderingLessThanOrderByOrderingDesc(ordering);
+    }
+
 }

@@ -4,7 +4,7 @@ function populateMainHeader() {
 
 function buildMainHeader() {
     return [
-            { text: '', id: 'main-header-actions' },
+            { text: '<a href="/manage.html">Manage</a>', id: 'main-header-actions' },
             { text: 'Date', id: 'main-header-date' }
         ]
         .concat(accounts.map(account => { return {
@@ -447,7 +447,7 @@ function populateSummary() {
 }
 
 function buildSummary(summary) {
-    return '<table class="summary">'
+    return '<table class="inlined">'
             + [{
                 text: '<th colspan="2"><a class="action" onClick="filterDatesBySummary(' + summary.from + ',' + summary.to
                     + ')">' + formatDateSummary(summary.from) + '</a></th>'

@@ -4,27 +4,26 @@
         <link rel="stylesheet" href="common.css" type="text/css" media="all"/>
 
         <script src="jquery-3.2.1.min.js"></script>
+        <script src="common-api.js"></script>
+        <script src="common-html.js"></script>
+        <script src="common-format.js"></script>
+        <script src="common-data-table.js"></script>
         <script src="index.js"></script>
-        <script src="index-html.js"></script>
-        <script src="index-util.js"></script>
+        <script src="index-transaction.js"></script>
+        <script src="index-totals.js"></script>
+        <script src="index-filter.js"></script>
+        <script src="index-currency.js"></script>
+        <script src="index-summary.js"></script>
 
         <title>Accounting</title>
     </head>
     <body>
         <table>
-            <thead>
-                <tr id="main-header"></tr>
-            </thead>
-            <tbody>
-                <tr id="main-filter"></tr>
-            </tbody>
-            <tbody>
-                <tr id="main-total-before"></tr>
-            </tbody>
+            <thead id="main-header"></thead>
+            <tbody id="main-filter"></tbody>
+            <tbody id="main-total-before"></tbody>
             <tbody id="main-body"></tbody>
-            <tbody>
-                <tr id="main-total-after"></tr>
-            </tbody>
+            <tbody id="main-total-after"></tbody>
             <tbody id="main-add"></tbody>
         </table>
         <div id="currency"></div>

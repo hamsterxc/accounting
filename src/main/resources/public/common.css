@@ -51,3 +51,11 @@ a.action {
 .hidden {
     background-color: lightgray;
 }
+
+span.inactive {
+    text-decoration: line-through;
+}
+
+span.small {
+    font-size: smaller;
+}

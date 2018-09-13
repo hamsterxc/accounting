@@ -1,14 +1,6 @@
-function find(items, value, fieldName = 'id') {
-    return findAll(items, value, fieldName)[0];
-}
-
-function findAll(items, value, fieldName = 'id') {
-    return items.filter(item => item[fieldName] === value);
-}
-
-function formatNumber(number, addString = '') {
+function formatNumber(number, precision = 2, addString = '') {
     const value = Number(number);
-    const formatted = value.toFixed(2) + addString;
+    const formatted = value.toFixed(precision) + addString;
     return value < 0 ? ('<span class="warn">' + formatted + '</span>') : formatted;
 }
 
@@ -31,9 +23,4 @@ function formatDateSummary(time) {
     const months = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"];
     return months[m] + ' ' + y.toString();
-}
-
-function cutDateToMonth(date) {
-    date.setUTCDate(1);
-    date.setUTCHours(0, 0, 0, 0);
 }

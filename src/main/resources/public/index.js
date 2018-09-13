@@ -14,7 +14,8 @@ $(() => {
 
     $
         .when(refreshStatic())
-        .then(() => refreshDynamic());
+        .then(() => refreshDynamic())
+        .then(() => scrollToTop());
 });
 
 function refreshStatic() {
@@ -31,9 +32,9 @@ function refreshStatic() {
         categories = categoriesResponse[0];
         currencies = currenciesResponse[0];
 
-        populateMainHeader();
-        populateMainFilter();
-        populateMainAdd();
+        populateTransactions();
+        populateTransactionFilter();
+        populateTransactionFilterDates();
         populateCurrency();
         filter();
 
@@ -47,8 +48,8 @@ function refreshDynamic() {
     let deferred = new $.Deferred();
 
     $.when(
-        $.ajax('transaction/runningtotal?toDate=' + transactionsDateFrom),
-        $.ajax('transaction/runningtotal?toDate=' + transactionsDateTo),
+        $.ajax('transaction/runningtotal?' + (transactionsDateFrom === '' ? 'to=0' : 'toDate=' + transactionsDateFrom)),
+        $.ajax('transaction/runningtotal?' + (transactionsDateTo === '' ? 'to=' + Date.now() : 'toDate=' + transactionsDateTo)),
         $.ajax('transaction/boundary'),
         $.ajax('transaction?fromDate=' + transactionsDateFrom + '&toDate=' + transactionsDateTo)
     ).then((totalBeforeResponse, totalAfterResponse, boundaryResponse, transactionsResponse) => {
@@ -61,18 +62,19 @@ function refreshDynamic() {
         transactionsDateFrom = formatDateTransaction(transactionsResponse[0].from);
         transactionsDateTo = formatDateTransaction(transactionsResponse[0].to);
 
-        populateMainTotals(totalBefore, totalAfter);
-        populateMainTransactions();
+        populateTransactions();
+        populateTransactionFilterDates();
+        populateTransactionTotals(totalBefore, totalAfter);
         filter();
 
         const dateLower = new Date(boundary.lower);
         const date = new Date(dateLower.getUTCFullYear(), dateLower.getUTCMonth(), 1);
-        cutDateToMonth(date);
+        _cutDateToMonth(date);
         const promises = [];
         while(date.getTime() <= boundary.upper) {
             const from = date.getTime();
             date.setUTCMonth(date.getUTCMonth() + 1);
-            cutDateToMonth(date);
+            _cutDateToMonth(date);
             promises.push($.ajax('transaction/summary?from=' + from + '&to=' + date.getTime())
                 .then(summaryResponse => summaries.push(summaryResponse)));
         }
@@ -80,7 +82,9 @@ function refreshDynamic() {
     }).then(() => {
         summaries = summaries.filter(item => item.items.length > 0);
         summaries.sort((a, b) => a.from - b.from);
+
         populateSummary();
+        filter();
 
         deferred.resolve();
     });
@@ -88,35 +92,7 @@ function refreshDynamic() {
     return deferred.promise();
 }
 
-function performAdd(data) {
-    $.ajax({
-        type: 'POST',
-        url: 'transaction',
-        contentType: 'application/json',
-        data: JSON.stringify(data)
-    }).then(() => {
-        refreshDynamic();
-        populateMainAdd();
-    });
-}
-
-function performEdit(data, transactionId) {
-    $.ajax({
-        type: 'PUT',
-        url: 'transaction/' + transactionId,
-        contentType: 'application/json',
-        data: JSON.stringify(data)
-    }).then(() => {
-        refreshDynamic();
-        populateMainAdd();
-    });
-}
-
-function performAction(id, action) {
-    $.ajax({
-        type: 'POST',
-        url: 'transaction/' + id + '/' + action
-    }).then(() => {
-        refreshDynamic();
-    });
+function _cutDateToMonth(date) {
+    date.setUTCDate(1);
+    date.setUTCHours(0, 0, 0, 0);
 }

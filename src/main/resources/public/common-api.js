@@ -11,3 +11,15 @@ function performRequest(method, url, data) {
 
     return $.ajax(request);
 }
+
+function getOrDefault(item, extractor, def) {
+    return item === undefined ? def : extractor(item);
+}
+
+function find(items, value, fieldName = 'id') {
+    return findAll(items, value, fieldName)[0];
+}
+
+function findAll(items, value, fieldName = 'id') {
+    return items.filter(item => item[fieldName] === value);
+}

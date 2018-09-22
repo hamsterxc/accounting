@@ -49,9 +49,29 @@ function populateCurrencies() {
         actionDelete: id => 'performCurrencyAction(' + id + ',' + '\'delete\');',
         actionSave: id => 'updateCurrency(' + id + ');',
         actionAdd: () => 'addCurrency();',
-        actionAfterEdit: id => 'onCurrencyEditClick();',
+        actionAfterEdit: id => 'onCurrencyEditClick();setupCurrencySubmit(' + id + ');',
         actionAfterCancel: id => 'onCurrencyCancelClick();',
     });
+
+    setupCurrencySubmit();
+}
+
+function setupCurrencySubmit(currencyId) {
+    const submit = _obtainCurrencySubmit(currencyId);
+    setupSubmit($('#' + buildInputId('currency', 'name', currencyId)), submit);
+    setupSubmit($('#' + buildInputId('currency', 'code', currencyId)), submit);
+    setupSubmit($('#' + buildInputId('currency', 'symbol', currencyId)), submit);
+    setupSubmit($('#' + buildInputId('currency', 'value', currencyId)), submit);
+}
+
+function _obtainCurrencySubmit(currencyId) {
+    return () => {
+        if(isNaN(currencyId)) {
+            addCurrency();
+        } else {
+            updateCurrency(currencyId);
+        }
+    };
 }
 
 function onCurrencyDefaultClick(id) {

@@ -45,7 +45,25 @@ function populateAccounts() {
         actionDelete: id => 'performAccountAction(' + id + ',' + '\'delete\');',
         actionSave: id => 'updateAccount(' + id + ');',
         actionAdd: () => 'addAccount();',
+        actionAfterEdit: id => 'setupAccountSubmit(' + id + ');',
     });
+
+    setupAccountSubmit();
+}
+
+function setupAccountSubmit(accountId) {
+    const submit = _obtainAccountSubmit(accountId);
+    setupSubmit($('#' + buildInputId('account', 'name', accountId)), submit);
+}
+
+function _obtainAccountSubmit(accountId) {
+    return () => {
+        if(isNaN(accountId)) {
+            addAccount();
+        } else {
+            updateAccount(accountId);
+        }
+    };
 }
 
 function _collectAccountData(id) {

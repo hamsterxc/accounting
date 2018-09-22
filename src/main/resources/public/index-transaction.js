@@ -167,27 +167,25 @@ function addOperationElement(args) {
     element.after(line);
 
     const input = line.find(_buildOperationElementDataSelector('amount', args.accountId, args.transactionId));
-    _setupTransactionInputSubmit(args.transactionId, input);
+    setupSubmit(input, _obtainTransactionSubmit(args.transactionId));
 
     return line;
 }
 
-function _setupTransactionInputSubmit(transactionId, input) {
-    input.off('keyup');
-    input.on('keyup', function(event) {
-        if(event.keyCode === 13) {
-            if(isNaN(transactionId)) {
-                addTransaction();
-            } else {
-                updateTransaction(transactionId);
-            }
+function _obtainTransactionSubmit(transactionId) {
+    return () => {
+        if(isNaN(transactionId)) {
+            addTransaction();
+        } else {
+            updateTransaction(transactionId);
         }
-    });
+    };
 }
 
 function setupTransactionSubmit(transactionId) {
-    _setupTransactionInputSubmit(transactionId, $('#' + buildInputId('transaction', 'date', transactionId)));
-    _setupTransactionInputSubmit(transactionId, $('#' + buildInputId('transaction', 'comment', transactionId)));
+    const submit = _obtainTransactionSubmit(transactionId);
+    setupSubmit($('#' + buildInputId('transaction', 'date', transactionId)), submit);
+    setupSubmit($('#' + buildInputId('transaction', 'comment', transactionId)), submit);
 }
 
 /*

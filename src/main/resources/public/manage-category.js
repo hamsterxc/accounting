@@ -27,7 +27,25 @@ function populateCategories() {
         actionDelete: id => 'performCategoryAction(' + id + ',' + '\'delete\');',
         actionSave: id => 'updateCategory(' + id + ');',
         actionAdd: () => 'addCategory();',
+        actionAfterEdit: id => 'setupCategorySubmit(' + id + ');',
     });
+
+    setupCategorySubmit();
+}
+
+function setupCategorySubmit(categoryId) {
+    const submit = _obtainCategorySubmit(categoryId);
+    setupSubmit($('#' + buildInputId('category', 'name', categoryId)), submit);
+}
+
+function _obtainCategorySubmit(categoryId) {
+    return () => {
+        if(isNaN(categoryId)) {
+            addCategory();
+        } else {
+            updateCategory(categoryId);
+        }
+    };
 }
 
 function _collectCategoryData(id) {

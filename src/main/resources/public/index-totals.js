@@ -8,7 +8,7 @@ function _buildTransactionTotal(total, id) {
         + '<th></th>'
         + '<th></th>'
         + accounts.map(account => '<th id="' + buildTotalCellId(id, account.id) + '">'
-            + formatNumber(getOrDefault(find(total.items, account.id), item => item.amount, 0.0)) + '</th>')
+            + formatNumber(getOrDefault(total.aggregation[account.id], item => item, 0.0)) + '</th>')
         + '<th>' + formatNumber(total.total) + '</th>'
         + '<th></th>'
         + '<th></th>'

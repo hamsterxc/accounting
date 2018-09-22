@@ -10,4 +10,6 @@ public interface CurrencyService {
 
     void updateCurrencyRates();
 
+    double convert(Currency from, Currency to, double amount);
+
 }

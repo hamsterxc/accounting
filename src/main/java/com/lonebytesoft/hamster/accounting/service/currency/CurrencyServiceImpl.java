@@ -47,4 +47,14 @@ public class CurrencyServiceImpl implements CurrencyService {
         }
     }
 
+    @Override
+    public double convert(Currency from, Currency to, double amount) {
+        if(from.getId() == to.getId()) {
+            return amount;
+        }
+
+        final double amountBase = amount * from.getValue();
+        return amountBase / to.getValue();
+    }
+
 }

@@ -1,14 +1,16 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
 import com.lonebytesoft.hamster.accounting.controller.view.ActionResultView;
+import com.lonebytesoft.hamster.accounting.controller.view.AggregationInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.AggregationItemView;
+import com.lonebytesoft.hamster.accounting.controller.view.AggregationView;
 import com.lonebytesoft.hamster.accounting.controller.view.OperationView;
-import com.lonebytesoft.hamster.accounting.controller.view.SummaryItemView;
-import com.lonebytesoft.hamster.accounting.controller.view.SummaryView;
 import com.lonebytesoft.hamster.accounting.controller.view.TransactionBoundaryView;
 import com.lonebytesoft.hamster.accounting.controller.view.TransactionInputView;
 import com.lonebytesoft.hamster.accounting.controller.view.TransactionView;
 import com.lonebytesoft.hamster.accounting.controller.view.TransactionsView;
 import com.lonebytesoft.hamster.accounting.model.Account;
+import com.lonebytesoft.hamster.accounting.model.Aggregation;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Config;
 import com.lonebytesoft.hamster.accounting.model.Currency;
@@ -19,6 +21,7 @@ import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.service.EntityAction;
+import com.lonebytesoft.hamster.accounting.service.aggregation.AggregationService;
 import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
 import com.lonebytesoft.hamster.accounting.service.date.DateService;
 import com.lonebytesoft.hamster.accounting.service.transaction.TransactionService;
@@ -39,8 +42,6 @@ import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,11 +65,19 @@ public class TransactionController {
     private final TransactionService transactionService;
     private final ConfigService configService;
     private final DateService dateService;
+    private final AggregationService aggregationService;
 
     @Autowired
-    public TransactionController(final AccountRepository accountRepository, final CategoryRepository categoryRepository,
-                                 final CurrencyRepository currencyRepository, final TransactionRepository transactionRepository,
-                                 final TransactionService transactionService, final ConfigService configService, final DateService dateService) {
+    public TransactionController(
+            final AccountRepository accountRepository,
+            final CategoryRepository categoryRepository,
+            final CurrencyRepository currencyRepository,
+            final TransactionRepository transactionRepository,
+            final TransactionService transactionService,
+            final ConfigService configService,
+            final DateService dateService,
+            final AggregationService aggregationService
+    ) {
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.currencyRepository = currencyRepository;
@@ -77,59 +86,43 @@ public class TransactionController {
         this.transactionService = transactionService;
         this.configService = configService;
         this.dateService = dateService;
+        this.aggregationService = aggregationService;
     }
 
-    @RequestMapping(method = RequestMethod.GET, path = "/runningtotal")
-    public SummaryView getRunningTotal(
-            @RequestParam(name = "from", required = false) final Long from,
-            @RequestParam(name = "fromDate", defaultValue = "") final String fromDate,
-            @RequestParam(name = "to", required = false) final Long to,
-            @RequestParam(name = "toDate", defaultValue = "") final String toDate
+    @RequestMapping(method = RequestMethod.POST, path = "/aggregate")
+    public AggregationView aggregate(
+            @RequestBody final AggregationInputView aggregationInputView
     ) {
-        final long fromTimestamp = parseTimestampParam(from, fromDate, () -> 0L);
-        final long toTimestamp = parseTimestampParam(to, toDate, () -> dateService.calculateDayStart(System.currentTimeMillis(), 1));
+        final Collection<AggregationItemView> items = aggregationInputView.getFilters().stream()
+                .map(filter -> {
+                    final long from = parseTimestampParam(filter.getFrom(), filter.getFromDate(), () -> 0L);
+                    final long to = parseTimestampParam(filter.getTo(), filter.getToDate(),
+                            () -> dateService.calculateDayStart(System.currentTimeMillis(), 1));
 
-        final Map<Long, Double> accountsRunningTotal = new HashMap<>();
-        final Config config = configService.get();
-        transactionRepository.findAllBetweenTime(fromTimestamp, toTimestamp)
-                .forEach(transaction -> {
-                    transaction.getOperations()
-                            .stream()
-                            .filter(Operation::isActive)
-                            .forEach(operation -> {
-                                final Account account = operation.getAccount();
-                                final double operationAmount = convertToAccountAmount(operation);
-                                accountsRunningTotal.compute(account.getId(),
-                                        (id, amount) -> amount == null ? operationAmount : amount + operationAmount);
-                            });
-                    final double total = calculateTotal(transaction, config);
-                    accountsRunningTotal.compute(null, (id, amount) -> amount == null ? total : amount + total);
-                });
+                    final Collection<Transaction> transactions = transactionRepository.findAllBetweenTime(from, to).stream()
+                            .filter(transaction -> aggregationInputView.getIncludeHidden() || transaction.getVisible())
+                            .collect(Collectors.toList());
 
-        final Double total = accountsRunningTotal.remove(null);
-        return mapSummaryToView(fromTimestamp, toTimestamp, accountsRunningTotal, total == null ? 0 : total);
-    }
+                    final Aggregation aggregation;
+                    switch(aggregationInputView.getField()) {
+                        case ACCOUNT:
+                            aggregation = aggregationService.aggregateByAccount(transactions);
+                            break;
 
-    @RequestMapping(method = RequestMethod.GET, path = "/summary")
-    public SummaryView getSummary(@RequestParam(name = "from", defaultValue = "0") final Long from,
-                                  @RequestParam(name = "to", required = false) final Long paramTo) {
-        final long to = paramTo == null ? System.currentTimeMillis() : paramTo;
+                        case CATEGORY:
+                            aggregation = aggregationService.aggregateByCategory(transactions);
+                            break;
 
-        final Map<Long, Double> items = new HashMap<>();
-        final Config config = configService.get();
-        transactionRepository.findAllBetweenTime(from, to)
-                .stream()
-                .filter(Transaction::getVisible)
-                .forEach(transaction -> {
-                    final double total = calculateTotal(transaction, config);
-                    items.compute(transaction.getCategory().getId(), (id, amount) -> amount == null ? total : amount + total);
-                    items.compute(null, (id, amount) -> amount == null ? total : amount + total);
-                });
+                        default:
+                            throw new TransactionInputException("Unsupported aggregation: " + aggregationInputView.getField());
+                    }
 
-        final Double total = items.remove(null);
-        logger.debug("Served 'summary' request: from = '{}', to = '{}', items = {}, total = {}",
-                new Date(from), new Date(to), items, total);
-        return mapSummaryToView(from, to, items, total == null ? 0 : total);
+                    return new AggregationItemView(from, to, aggregationInputView.getField(),
+                            aggregation.getItems(), aggregation.getTotal());
+                })
+                .collect(Collectors.toList());
+
+        return new AggregationView(items);
     }
 
     @RequestMapping(method = RequestMethod.GET, path = "boundary")
@@ -249,27 +242,6 @@ public class TransactionController {
         return defaultValue.get();
     }
 
-    private double convert(final Currency from, final Currency to, final double amount) {
-        final double amountBase = amount * from.getValue();
-        return amountBase / to.getValue();
-    }
-
-    private double convertToAccountAmount(final Operation operation) {
-        return operation.getCurrency() == null
-                ? operation.getAmount()
-                : convert(operation.getCurrency(), operation.getAccount().getCurrency(), operation.getAmount());
-    }
-
-    private double calculateTotal(final Transaction transaction, final Config config) {
-        return transaction.getOperations()
-                .stream()
-                .filter(Operation::isActive)
-                .mapToDouble(operation ->
-                        convert(operation.getCurrency() == null ? operation.getAccount().getCurrency() : operation.getCurrency(),
-                                config.getCurrencyDefault(), operation.getAmount()))
-                .sum();
-    }
-
     private void populateTransactionFromView(final Transaction transaction, final TransactionInputView transactionInputView) {
         final Long time = dateService.parse(transactionInputView.getDate());
         if(time == null) {
@@ -346,7 +318,7 @@ public class TransactionController {
         transactionView.setCategoryId(transaction.getCategory().getId());
         transactionView.setComment(transaction.getComment());
         transactionView.setVisible(transaction.getVisible());
-        transactionView.setTotal(calculateTotal(transaction, config));
+        transactionView.setTotal(transactionService.calculateTotal(transaction));
         transactionView.setOperations(transaction.getOperations()
                 .stream()
                 .map(operation -> {
@@ -360,23 +332,6 @@ public class TransactionController {
                 .collect(Collectors.toList())
         );
         return transactionView;
-    }
-
-    private SummaryView mapSummaryToView(final long from, final long to, final Map<Long, Double> items, final double total) {
-        final SummaryView summaryView = new SummaryView();
-        summaryView.setItems(items.entrySet()
-                .stream()
-                .map(entry -> {
-                    final SummaryItemView summaryItemView = new SummaryItemView();
-                    summaryItemView.setId(entry.getKey());
-                    summaryItemView.setAmount(entry.getValue());
-                    return summaryItemView;
-                })
-                .collect(Collectors.toList()));
-        summaryView.setTotal(total);
-        summaryView.setFrom(from);
-        summaryView.setTo(to);
-        return summaryView;
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)

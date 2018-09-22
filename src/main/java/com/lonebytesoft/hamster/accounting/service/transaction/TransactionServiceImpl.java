@@ -1,8 +1,12 @@
 package com.lonebytesoft.hamster.accounting.service.transaction;
 
+import com.lonebytesoft.hamster.accounting.model.Currency;
+import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
 import com.lonebytesoft.hamster.accounting.service.EntityAction;
+import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
+import com.lonebytesoft.hamster.accounting.service.currency.CurrencyService;
 import com.lonebytesoft.hamster.accounting.service.date.DateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,12 +23,20 @@ public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final DateService dateService;
+    private final ConfigService configService;
+    private final CurrencyService currencyService;
 
     @Autowired
-    public TransactionServiceImpl(final TransactionRepository transactionRepository,
-                                  final DateService dateService) {
+    public TransactionServiceImpl(
+            final TransactionRepository transactionRepository,
+            final DateService dateService,
+            final ConfigService configService,
+            final CurrencyService currencyService
+    ) {
         this.transactionRepository = transactionRepository;
         this.dateService = dateService;
+        this.configService = configService;
+        this.currencyService = currencyService;
     }
 
     @Override
@@ -148,6 +160,25 @@ public class TransactionServiceImpl implements TransactionService {
         performTimeAction(added, EntityAction.MOVE_UP);
 
         return added;
+    }
+
+    @Override
+    public double calculateTotal(Transaction transaction) {
+        final Currency currencyDefault = configService.get().getCurrencyDefault();
+        return transaction.getOperations()
+                .stream()
+                .filter(Operation::isActive)
+                .mapToDouble(operation -> calculateTotal(operation, currencyDefault))
+                .sum();
+    }
+
+    @Override
+    public double calculateTotal(Operation operation, Currency currency) {
+        return currencyService.convert(
+                operation.getCurrency() == null ? operation.getAccount().getCurrency() : operation.getCurrency(),
+                currency,
+                operation.getAmount()
+        );
     }
 
 }

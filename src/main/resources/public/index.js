@@ -2,7 +2,6 @@ let accounts = [];
 let categories = [];
 let currencies = [];
 let transactions = [];
-let summaries = [];
 
 let transactionsDateFrom = '';
 let transactionsDateTo = '';
@@ -27,7 +26,6 @@ function refreshStatic() {
         $.ajax('currency')
     ).then((accountsResponse, categoriesResponse, currenciesResponse) => {
         transactions = [];
-        summaries = [];
         accounts = accountsResponse[0];
         categories = categoriesResponse[0];
         currencies = currenciesResponse[0];
@@ -48,42 +46,44 @@ function refreshDynamic() {
     let deferred = new $.Deferred();
 
     $.when(
-        $.ajax('transaction/runningtotal?' + (transactionsDateFrom === '' ? 'to=0' : 'toDate=' + transactionsDateFrom)),
-        $.ajax('transaction/runningtotal?' + (transactionsDateTo === '' ? 'to=' + Date.now() : 'toDate=' + transactionsDateTo)),
+        _buildRunningTotalsRequest(transactionsDateFrom, transactionsDateTo),
         $.ajax('transaction/boundary'),
         $.ajax('transaction?fromDate=' + transactionsDateFrom + '&toDate=' + transactionsDateTo)
-    ).then((totalBeforeResponse, totalAfterResponse, boundaryResponse, transactionsResponse) => {
-        const totalBefore = totalBeforeResponse[0];
-        const totalAfter = totalAfterResponse[0];
+    ).then((runningTotalsResponse, boundaryResponse, transactionsResponse) => {
+        const runningTotals = runningTotalsResponse[0].items;
         const boundary = boundaryResponse[0];
         transactions = transactionsResponse[0].transactions;
-        summaries = [];
 
         transactionsDateFrom = formatDateTransaction(transactionsResponse[0].from);
         transactionsDateTo = formatDateTransaction(transactionsResponse[0].to);
 
         populateTransactions();
         populateTransactionFilterDates();
-        populateTransactionTotals(totalBefore, totalAfter);
+
+        const isRunningTotalsSwapped = runningTotals[0].to > runningTotals[1].to;
+        populateTransactionTotals(
+            runningTotals[isRunningTotalsSwapped ? 1 : 0],
+            runningTotals[isRunningTotalsSwapped ? 0 : 1]
+        );
+
         filter();
 
         const dateLower = new Date(boundary.lower);
         const date = new Date(dateLower.getUTCFullYear(), dateLower.getUTCMonth(), 1);
         _cutDateToMonth(date);
-        const promises = [];
+        const boundaries = [];
         while(date.getTime() <= boundary.upper) {
             const from = date.getTime();
             date.setUTCMonth(date.getUTCMonth() + 1);
             _cutDateToMonth(date);
-            promises.push($.ajax('transaction/summary?from=' + from + '&to=' + date.getTime())
-                .then(summaryResponse => summaries.push(summaryResponse)));
+            boundaries.push({from: from, to: date.getTime()});
         }
-        return $.when.apply($, promises);
-    }).then(() => {
-        summaries = summaries.filter(item => item.items.length > 0);
+        return _buildSummaryRequest(boundaries);
+    }).then((summariesResponse) => {
+        const summaries = summariesResponse.items.filter(item => Object.keys(item.aggregation).length > 0);
         summaries.sort((a, b) => a.from - b.from);
 
-        populateSummary();
+        populateSummary(summaries);
         filter();
 
         deferred.resolve();
@@ -95,4 +95,34 @@ function refreshDynamic() {
 function _cutDateToMonth(date) {
     date.setUTCDate(1);
     date.setUTCHours(0, 0, 0, 0);
+}
+
+function _buildRunningTotalsRequest(lower, upper) {
+    const filterBefore = {from: 0};
+    if(lower === '') {
+        filterBefore['to'] = 0;
+    } else {
+        filterBefore['toDate'] = lower;
+    }
+
+    const filterAfter = {from: 0};
+    if(upper === '') {
+        filterAfter['to'] = Date.now();
+    } else {
+        filterAfter['toDate'] = upper;
+    }
+
+    return performRequest('POST', '/transaction/aggregate', {
+        filters: [filterBefore, filterAfter],
+        field: 'account',
+        includeHidden: true,
+    });
+}
+
+function _buildSummaryRequest(boundaries) {
+    return performRequest('POST', '/transaction/aggregate', {
+        filters: boundaries,
+        field: 'category',
+        includeHidden: false,
+    });
 }

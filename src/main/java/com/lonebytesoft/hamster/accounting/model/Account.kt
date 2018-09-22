@@ -32,6 +32,21 @@ class Account: Ordered {
     @Column(nullable = false)
     var visible: Boolean = true
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Account
+
+        if (id != other.id) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
+
     override fun toString(): String = "Account(id=$id, name='$name', currency=$currency, ordering=$ordering, visible=$visible)"
 
     fun toUserString(): String = "#$id '$name'"

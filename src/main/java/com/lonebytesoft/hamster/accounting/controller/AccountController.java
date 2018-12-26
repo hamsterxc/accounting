@@ -66,10 +66,8 @@ public class AccountController {
             @PathVariable final long id,
             @RequestBody final AccountInputView accountInputView
     ) {
-        Account account = accountRepository.findOne(id);
-        if(account == null) {
-            throw new IllegalArgumentException("Could not find account, id=" + id);
-        }
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Could not find account, id=" + id));
 
         account = viewConverter.populateFromInput(account, accountInputView);
         account = accountRepository.save(account);
@@ -81,16 +79,14 @@ public class AccountController {
             @PathVariable final long id,
             @PathVariable final EntityAction action
     ) {
-        final Account account = accountRepository.findOne(id);
-        if(account == null) {
-            throw new IllegalArgumentException("Could not find account, id=" + id);
-        }
+        final Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Could not find account, id=" + id));
 
         switch(action) {
             case MOVE_UP:
                 final Account firstBefore = accountRepository.findFirstBefore(account.getOrdering());
                 OrderedUtils.swapOrder(account, firstBefore);
-                accountRepository.save(
+                accountRepository.saveAll(
                         Stream.of(account, firstBefore)
                                 .filter(Objects::nonNull)
                                 .collect(Collectors.toList())
@@ -100,7 +96,7 @@ public class AccountController {
             case MOVE_DOWN:
                 final Account firstAfter = accountRepository.findFirstAfter(account.getOrdering());
                 OrderedUtils.swapOrder(account, firstAfter);
-                accountRepository.save(
+                accountRepository.saveAll(
                         Stream.of(account, firstAfter)
                                 .filter(Objects::nonNull)
                                 .collect(Collectors.toList())

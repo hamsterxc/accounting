@@ -35,7 +35,7 @@ class Transaction {
     @Column(nullable = false)
     var visible: Boolean = true
 
-    @OneToMany(cascade = arrayOf(CascadeType.ALL), mappedBy = "transaction", orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = [CascadeType.ALL], mappedBy = "transaction", orphanRemoval = true, fetch = FetchType.EAGER)
     lateinit var operations: Collection<Operation>
 
     override fun toString(): String = "Transaction(id=$id, time='" + Date(time) +

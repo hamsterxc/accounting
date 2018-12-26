@@ -66,10 +66,8 @@ public class CategoryController {
             @PathVariable final long id,
             @RequestBody final CategoryInputView categoryInputView
     ) {
-        Category category = categoryRepository.findOne(id);
-        if(category == null) {
-            throw new IllegalArgumentException("Could not find category, id=" + id);
-        }
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Could not find category, id=" + id));
 
         category = viewConverter.populateFromInput(category, categoryInputView);
         category = categoryRepository.save(category);
@@ -81,16 +79,14 @@ public class CategoryController {
             @PathVariable final long id,
             @PathVariable final EntityAction action
     ) {
-        final Category category = categoryRepository.findOne(id);
-        if(category == null) {
-            throw new IllegalArgumentException("Could not find category, id=" + id);
-        }
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Could not find category, id=" + id));
 
         switch(action) {
             case MOVE_UP:
                 final Category firstBefore = categoryRepository.findFirstBefore(category.getOrdering());
                 OrderedUtils.swapOrder(category, firstBefore);
-                categoryRepository.save(
+                categoryRepository.saveAll(
                         Stream.of(category, firstBefore)
                                 .filter(Objects::nonNull)
                                 .collect(Collectors.toList())
@@ -100,7 +96,7 @@ public class CategoryController {
             case MOVE_DOWN:
                 final Category firstAfter = categoryRepository.findFirstAfter(category.getOrdering());
                 OrderedUtils.swapOrder(category, firstAfter);
-                categoryRepository.save(
+                categoryRepository.saveAll(
                         Stream.of(category, firstAfter)
                                 .filter(Objects::nonNull)
                                 .collect(Collectors.toList())

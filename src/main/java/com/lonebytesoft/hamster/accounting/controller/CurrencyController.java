@@ -67,17 +67,7 @@ public class CurrencyController {
             @RequestBody final CurrencyInputView currencyInputView
     ) {
         Currency currency = viewConverter.populateFromInput(new Currency(), currencyInputView);
-        currency = currencyRepository.save(currency);
-
-        currencyService.updateCurrencyRates();
-        currencyService.updateCurrencyValues();
-        currency = currencyRepository.findOne(currency.getId());
-
-        if(currencyInputView.isDefault()) {
-            final Config config = configService.get();
-            config.setCurrencyDefault(currency);
-            configService.save(config);
-        }
+        currency = saveAndUpdate(currency, currencyInputView.isDefault());
 
         return viewConverter.convertToOutput(currency);
     }
@@ -87,25 +77,31 @@ public class CurrencyController {
             @PathVariable final long id,
             @RequestBody final CurrencyInputView currencyInputView
     ) {
-        Currency currency = currencyRepository.findOne(id);
-        if(currency == null) {
-            throw new IllegalArgumentException("Could not find currency, id=" + id);
-        }
+        Currency currency = currencyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Could not find currency, id=" + id));
 
         currency = viewConverter.populateFromInput(currency, currencyInputView);
-        currency = currencyRepository.save(currency);
+        currency = saveAndUpdate(currency, currencyInputView.isDefault());
+
+        return viewConverter.convertToOutput(currency);
+    }
+
+    private Currency saveAndUpdate(final Currency currency, final boolean isDefault) {
+        Currency entity = currencyRepository.save(currency);
 
         currencyService.updateCurrencyRates();
         currencyService.updateCurrencyValues();
-        currency = currencyRepository.findOne(currency.getId());
+        final long currencyId = entity.getId();
+        entity = currencyRepository.findById(currencyId)
+                .orElseThrow(() -> new IllegalStateException("Could not find currency, id=" + currencyId));
 
-        if(currencyInputView.isDefault()) {
+        if(isDefault) {
             final Config config = configService.get();
-            config.setCurrencyDefault(currency);
+            config.setCurrencyDefault(entity);
             configService.save(config);
         }
 
-        return viewConverter.convertToOutput(currency);
+        return entity;
     }
 
     @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
@@ -113,10 +109,8 @@ public class CurrencyController {
             @PathVariable final long id,
             @PathVariable final EntityAction action
     ) {
-        final Currency currency = currencyRepository.findOne(id);
-        if(currency == null) {
-            throw new IllegalArgumentException("Could not find currency, id=" + id);
-        }
+        final Currency currency = currencyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Could not find currency, id=" + id));
 
         switch(action) {
             case DELETE:

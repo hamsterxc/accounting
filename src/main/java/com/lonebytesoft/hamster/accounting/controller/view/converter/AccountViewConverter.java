@@ -23,10 +23,8 @@ public class AccountViewConverter implements ModelViewConverter<Account, Account
         base.setName(input.getName());
         base.setVisible(input.getVisible());
 
-        final Currency currency = currencyRepository.findOne(input.getCurrencyId());
-        if(currency == null) {
-            throw new IllegalArgumentException("No currency found, id=" + input.getCurrencyId());
-        }
+        final Currency currency = currencyRepository.findById(input.getCurrencyId())
+                .orElseThrow(() -> new IllegalArgumentException("Could not find currency, id=" + input.getCurrencyId()));
         base.setCurrency(currency);
 
         return base;

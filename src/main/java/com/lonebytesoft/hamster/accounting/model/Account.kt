@@ -12,7 +12,7 @@ import javax.persistence.Table
 import javax.persistence.UniqueConstraint
 
 @Entity
-@Table(uniqueConstraints = arrayOf(UniqueConstraint(columnNames = arrayOf("name", "currency_id"))))
+@Table(uniqueConstraints = [UniqueConstraint(columnNames = ["name", "currency_id"])])
 class Account: Ordered {
 
     @Id

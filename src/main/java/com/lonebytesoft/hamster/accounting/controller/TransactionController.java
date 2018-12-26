@@ -182,10 +182,8 @@ public class TransactionController {
     @RequestMapping(method = RequestMethod.PUT, path = "/{id}", consumes = "application/json")
     public TransactionView modifyTransaction(@PathVariable final long id,
                                              @RequestBody TransactionInputView transactionInputView) {
-        final Transaction transaction = transactionRepository.findOne(id);
-        if(transaction == null) {
-            throw new TransactionInputException("Could not find transaction, id=" + id);
-        }
+        final Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new TransactionInputException("Could not find transaction, id=" + id));
 
         final long time = transaction.getTime();
         populateTransactionFromView(transaction, transactionInputView);
@@ -204,10 +202,8 @@ public class TransactionController {
     @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
     public ActionResultView performTransactionAction(@PathVariable final long id,
                                                      @PathVariable final EntityAction action) {
-        final Transaction transaction = transactionRepository.findOne(id);
-        if(transaction == null) {
-            throw new TransactionInputException("Could not find transaction, id=" + id);
-        }
+        final Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new TransactionInputException("Could not find transaction, id=" + id));
 
         switch(action) {
             case MOVE_UP:
@@ -249,10 +245,8 @@ public class TransactionController {
         }
         transaction.setTime(time);
 
-        final Category category = categoryRepository.findOne(transactionInputView.getCategoryId());
-        if(category == null) {
-            throw new TransactionInputException("Could not find category, id=" + transactionInputView.getCategoryId());
-        }
+        final Category category = categoryRepository.findById(transactionInputView.getCategoryId())
+                .orElseThrow(() -> new TransactionInputException("Could not find category, id=" + transactionInputView.getCategoryId()));
         transaction.setCategory(category);
 
         transaction.setComment(transactionInputView.getComment());
@@ -268,10 +262,8 @@ public class TransactionController {
 
                         operation.setTransaction(transaction);
 
-                        final Account account = accountRepository.findOne(operationInputView.getAccountId());
-                        if(account == null) {
-                            throw new TransactionInputException("Could not find account, id=" + operationInputView.getAccountId());
-                        }
+                        final Account account = accountRepository.findById(operationInputView.getAccountId())
+                                .orElseThrow(() -> new TransactionInputException("Could not find account, id=" + operationInputView.getAccountId()));
                         operation.setAccount(account);
 
                         final double amount;
@@ -280,10 +272,8 @@ public class TransactionController {
                             amount = Double.parseDouble(matcherWithCurrency.group(1));
 
                             final String currencyCode = matcherWithCurrency.group(4);
-                            final Currency currency = currencyRepository.findByCode(currencyCode);
-                            if(currency == null) {
-                                throw new TransactionInputException("Could not find currency, code=" + currencyCode);
-                            }
+                            final Currency currency = currencyRepository.findByCode(currencyCode)
+                                    .orElseThrow(() -> new TransactionInputException("Could not find currency, code=" + currencyCode));
                             operation.setCurrency(currency);
                         } else {
                             final Matcher matcher = OPERATION_AMOUNT_PATTERN.matcher(operationInputView.getAmount());

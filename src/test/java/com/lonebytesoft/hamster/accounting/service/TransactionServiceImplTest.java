@@ -323,9 +323,8 @@ public class TransactionServiceImplTest {
     }
 
     private Transaction getTransaction(final long id) {
-        final Transaction transaction = transactionRepository.findOne(id);
-        Assert.assertNotNull(transaction);
-        return transaction;
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new AssertionError("Transaction id=" + id + " must exist"));
     }
 
     private void performTimeAction(final long id, final boolean moveEarlier) {

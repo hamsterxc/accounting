@@ -29,10 +29,8 @@ public class ConfigServiceImpl implements ConfigService {
         mappers.put("currency_id_default", new ConfigEntryMapper(
                 (config, value) -> {
                     final long currencyId = Long.parseLong(value);
-                    final Currency currency = currencyRepository.findOne(currencyId);
-                    if(currency == null) {
-                        throw new IllegalStateException("No default currency found, id=" + currencyId);
-                    }
+                    final Currency currency = currencyRepository.findById(currencyId)
+                            .orElseThrow(() -> new IllegalStateException("No default currency found, id=" + currencyId));
                     config.setCurrencyDefault(currency);
                 },
                 config -> String.valueOf(config.getCurrencyDefault().getId())
@@ -54,7 +52,7 @@ public class ConfigServiceImpl implements ConfigService {
     @Override
     public void save(Config config) {
         configEntryRepository.deleteAll();
-        configEntryRepository.save(
+        configEntryRepository.saveAll(
                 mappers
                         .entrySet()
                         .stream()

@@ -34,7 +34,7 @@ public class CurrencyServiceImpl implements CurrencyService {
 
     @Override
     public void updateCurrencyValues() {
-        currencyRepository.save(StreamSupport.stream(currencyRepository.findAll().spliterator(), false)
+        currencyRepository.saveAll(StreamSupport.stream(currencyRepository.findAll().spliterator(), false)
                 .peek(currency -> currency.setValue(getActualCurrencyValue(currency)))
                 .collect(Collectors.toList())
         );

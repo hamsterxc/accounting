@@ -7,21 +7,19 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 
 @Entity
-class Category: Ordered {
+data class Category(
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    var id: Long = 0
+    var id: Long = 0,
 
     @Column(unique = true, nullable = false)
-    var name: String = ""
+    var name: String = "",
 
     @Column(nullable = false)
-    override var ordering: Long = 0
+    override var ordering: Long = 0,
 
     @Column(nullable = false)
     var visible: Boolean = true
 
-    override fun toString(): String = "Category(id=$id, name='$name', ordering=$ordering, visible=$visible)"
-
-}
+): Ordered

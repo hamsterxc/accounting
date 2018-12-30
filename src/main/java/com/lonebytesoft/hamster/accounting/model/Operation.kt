@@ -9,31 +9,30 @@ import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
 
 @Entity
-class Operation {
+data class Operation(
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    var id: Long = 0
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "transaction_id", nullable = false)
-    lateinit var transaction: Transaction
+    var id: Long = 0,
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "account_id", nullable = false)
-    lateinit var account: Account
+    var account: Account = Account(),
 
     @ManyToOne(optional = true)
     @JoinColumn(name = "currency_id")
-    var currency: Currency? = null
+    var currency: Currency? = null,
 
     @Column
-    var amount: Double = 0.toDouble()
+    var amount: Double = 0.toDouble(),
 
     @Column
     var isActive: Boolean = true
 
-    override fun toString(): String = "Operation(id=$id, transactionId=" + transaction.id +
-            ", account=$account, currency=$currency, amount=$amount, isActive=$isActive)"
+) {
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "transaction_id", nullable = false)
+    var transaction: Transaction = Transaction()
 
 }

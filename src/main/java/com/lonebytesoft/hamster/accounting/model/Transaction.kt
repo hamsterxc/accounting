@@ -16,30 +16,29 @@ import javax.persistence.ManyToOne
 import javax.persistence.OneToMany
 
 @Entity
-class Transaction {
+data class Transaction(
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    var id: Long = 0
+    var id: Long = 0,
 
     @Column(nullable = false)
-    var time: Long = 0
+    var time: Long = 0,
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "category_id", nullable = false)
-    lateinit var category: Category
+    var category: Category = Category(),
 
     @Column
-    var comment: String = ""
+    var comment: String = "",
 
     @Column(nullable = false)
     var visible: Boolean = true
 
-    @OneToMany(cascade = [CascadeType.ALL], mappedBy = "transaction", orphanRemoval = true, fetch = FetchType.EAGER)
-    lateinit var operations: Collection<Operation>
+) {
 
-    override fun toString(): String = "Transaction(id=$id, time='" + Date(time) +
-            "', category=$category, comment='$comment', visible=$visible, operations=$operations)"
+    @OneToMany(cascade = [CascadeType.ALL], mappedBy = "transaction", orphanRemoval = true, fetch = FetchType.EAGER)
+    var operations: Collection<Operation> = emptyList()
 
     fun toUserString(): String = "#$id ${TRANSACTION_DATE_FORMAT.get().format(Date(time))} '$comment'"
 

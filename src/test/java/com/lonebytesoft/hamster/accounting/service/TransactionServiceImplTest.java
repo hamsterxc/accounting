@@ -90,46 +90,61 @@ public class TransactionServiceImplTest {
     }
 
     private Category createCategory() {
-        final Category category = new Category();
-        category.setName(String.valueOf(unique++));
-        category.setOrdering(unique++);
+        final Category category = new Category(
+                0,
+                String.valueOf(unique++),
+                unique++,
+                true
+        );
         return categoryRepository.save(category);
     }
 
     private Currency createCurrency() {
-        final Currency currency = new Currency();
-        currency.setCode(String.valueOf(unique++));
-        currency.setName(String.valueOf(unique++));
-        currency.setSymbol(String.valueOf(unique++));
-        currency.setValue(unique++);
+        final Currency currency = new Currency(
+                0,
+                String.valueOf(unique++),
+                String.valueOf(unique++),
+                String.valueOf(unique++),
+                unique++
+        );
         return currencyRepository.save(currency);
     }
 
     private Account createAccount() {
-        final Account account = new Account();
-        account.setName(String.valueOf(unique++));
-        account.setCurrency(createCurrency());
+        final Account account = new Account(
+                0,
+                String.valueOf(unique++),
+                createCurrency(),
+                0,
+                true
+        );
         return accountRepository.save(account);
     }
 
     private Collection<Operation> createOperations(final Transaction transaction, final int count) {
         return IntStream.range(0, count)
                 .mapToObj(index -> {
-                    final Operation operation = new Operation();
+                    final Operation operation = new Operation(
+                            0,
+                            createAccount(),
+                            null,
+                            (index + 1.0) * 10.0,
+                            true
+                    );
                     operation.setTransaction(transaction);
-                    operation.setAccount(createAccount());
-                    operation.setAmount((index + 1.0) * 10.0);
                     return operation;
                 })
                 .collect(Collectors.toList());
     }
 
     private Transaction constructTransaction(final long time, final String comment, final int operationsCount) {
-        final Transaction transaction = new Transaction();
-        transaction.setTime(time);
-        transaction.setCategory(createCategory());
-        transaction.setComment(comment);
-        transaction.setVisible(true);
+        final Transaction transaction = new Transaction(
+                0,
+                time,
+                createCategory(),
+                comment,
+                true
+        );
         transaction.setOperations(createOperations(transaction, operationsCount));
         return transaction;
     }

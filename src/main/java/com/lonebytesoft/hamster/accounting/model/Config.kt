@@ -1,9 +1,7 @@
 package com.lonebytesoft.hamster.accounting.model
 
-class Config {
+data class Config(
 
-    lateinit var currencyDefault: Currency
+    var currencyDefault: Currency = Currency()
 
-    override fun toString(): String = "Config(currencyDefault=$currencyDefault)"
-
-}
+)

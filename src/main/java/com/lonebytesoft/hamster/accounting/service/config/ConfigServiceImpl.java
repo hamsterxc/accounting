@@ -56,12 +56,10 @@ public class ConfigServiceImpl implements ConfigService {
                 mappers
                         .entrySet()
                         .stream()
-                        .map(entry -> {
-                            final ConfigEntry configEntry = new ConfigEntry();
-                            configEntry.setKey(entry.getKey());
-                            configEntry.setValue(entry.getValue().getWrite().apply(config));
-                            return configEntry;
-                        })
+                        .map(entry -> new ConfigEntry(
+                                entry.getKey(),
+                                entry.getValue().getWrite().apply(config)
+                        ))
                         .collect(Collectors.toList())
         );
     }

@@ -21,9 +21,11 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 @Component
 @Profile("test")
@@ -90,26 +92,23 @@ public class TestDataPopulator {
     }
 
     private void populateConfig(final List<Currency> currencies) {
-        final Config config = new Config();
-
-        config.setCurrencyDefault(currencies.get(0));
-
+        final Config config = new Config(
+                currencies.get(0)
+        );
         configService.save(config);
     }
 
     private List<Category> populateCategory(final int count) {
         final List<Category> categories = new ArrayList<>(count);
-        int ordering = 0;
+        final List<Long> ordering = randomOrdering(count);
         for(int i = 0; i < count; i++) {
-            final Category category = new Category();
-
-            category.setName(generateRandomWords(1, 3, 4, 11));
-            category.setVisible(Math.random() > 1.5 / count);
-
-            ordering += random(-1, 2);
-            category.setOrdering(ordering);
-
-            categoryRepository.save(category);
+            Category category = new Category(
+                    0,
+                    generateRandomWords(1, 3, 4, 11),
+                    ordering.get(i),
+                    Math.random() > 1.5 / count
+            );
+            category = categoryRepository.save(category);
             categories.add(category);
         }
         return categories;
@@ -118,14 +117,15 @@ public class TestDataPopulator {
     private List<Currency> populateCurrency(final int count) {
         final List<Currency> currencies = new ArrayList<>(count);
         for(int i = 0; i < count; i++) {
-            final Currency currency = new Currency();
-
-            currency.setCode(generateRandomString(ALPHABET_UPPERCASE, 3));
-            currency.setName(generateRandomWord(4, 11));
-            currency.setSymbol(currency.getCode().substring(0, 2));
-            currency.setValue(random(1e-3, 1e4));
-
-            currencyRepository.save(currency);
+            final String code = generateRandomString(ALPHABET_UPPERCASE, 3);
+            Currency currency = new Currency(
+                    0,
+                    code,
+                    generateRandomWord(4, 11),
+                    code.substring(0, 2),
+                    random(1e-3, 1e4)
+            );
+            currency = currencyRepository.save(currency);
             currencies.add(currency);
         }
         return currencies;
@@ -133,18 +133,16 @@ public class TestDataPopulator {
 
     private List<Account> populateAccount(final int count, final List<Currency> currencies) {
         final List<Account> accounts = new ArrayList<>(count);
-        int ordering = 0;
+        final List<Long> ordering = randomOrdering(count);
         for(int i = 0; i < count; i++) {
-            final Account account = new Account();
-
-            account.setName(generateRandomWords(1, 3, 4, 11));
-            account.setCurrency(currencies.get(random(0, currencies.size())));
-            account.setVisible(Math.random() > 1.5 / count);
-
-            ordering += random(-1, 2);
-            account.setOrdering(ordering);
-
-            accountRepository.save(account);
+            Account account = new Account(
+                    0,
+                    generateRandomWords(1, 3, 4, 11),
+                    currencies.get(random(0, currencies.size())),
+                    ordering.get(i),
+                    Math.random() > 1.5 / count
+            );
+            account = accountRepository.save(account);
             accounts.add(account);
         }
         return accounts;
@@ -153,23 +151,28 @@ public class TestDataPopulator {
     private void populateTransactionOperation(final List<Category> categories, final List<Currency> currencies,
                                               final List<Account> accounts,
                                               final long timeFrom, final long timeTo) {
-        final Transaction transaction = new Transaction();
-        transaction.setTime(random(timeFrom, timeTo));
-        transaction.setCategory(categories.get(random(0, categories.size())));
-        transaction.setComment(generateRandomWords(1, 6, 4, 16));
-        transaction.setVisible(Math.random() > 0.1);
+        final Transaction transaction = new Transaction(
+                0,
+                random(timeFrom, timeTo),
+                categories.get(random(0, categories.size())),
+                generateRandomWords(1, 6, 4, 16),
+                Math.random() > 0.1
+        );
 
         final List<Account> freeAccounts = new ArrayList<>(accounts);
         transaction.setOperations(IntStream.range(0, random(1, accounts.size() * 2))
                 .mapToObj(index -> {
-                    final Operation operation = new Operation();
+                    final Operation operation = new Operation(
+                            0,
+                            freeAccounts.get(random(0, freeAccounts.size())),
+                            null,
+                            random(-1e5, 1e5),
+                            random(0, 3) > 0
+                    );
                     operation.setTransaction(transaction);
-                    operation.setAccount(freeAccounts.get(random(0, freeAccounts.size())));
                     if(random(0, 3) > 0) {
                         operation.setCurrency(currencies.get(random(0, currencies.size())));
                     }
-                    operation.setAmount(random(-1e5, 1e5));
-                    operation.setActive(random(0, 3) > 0);
                     return operation;
                 })
                 .collect(Collectors.toList())
@@ -218,6 +221,14 @@ public class TestDataPopulator {
 
     private double random(final double min, final double max) {
         return min + Math.random() * (max - min);
+    }
+
+    private List<Long> randomOrdering(final int count) {
+        final List<Long> ordering = LongStream.range(0, count)
+                .boxed()
+                .collect(Collectors.toList());
+        Collections.shuffle(ordering);
+        return ordering;
     }
 
 }

@@ -7,24 +7,22 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 
 @Entity
-class Currency {
+data class Currency(
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    var id: Long = 0
+    var id: Long = 0,
 
     @Column(unique = true, nullable = false)
-    var code: String = ""
+    var code: String = "",
 
     @Column(unique = true, nullable = false)
-    var name: String = ""
+    var name: String = "",
 
     @Column(unique = true, nullable = false)
-    var symbol: String = ""
+    var symbol: String = "",
 
     @Column(name = "value_default")
     var value: Double = 0.toDouble()
 
-    override fun toString(): String = "Currency(id=$id, code='$code', name='$name', symbol='$symbol', value=$value)"
-
-}
+)

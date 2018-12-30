@@ -13,41 +13,26 @@ import javax.persistence.UniqueConstraint
 
 @Entity
 @Table(uniqueConstraints = [UniqueConstraint(columnNames = ["name", "currency_id"])])
-class Account: Ordered {
+data class Account(
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    var id: Long = 0
+    var id: Long = 0,
 
     @Column(nullable = false)
-    var name: String = ""
+    var name: String = "",
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "currency_id", nullable = false)
-    lateinit var currency: Currency
+    var currency: Currency = Currency(),
 
     @Column(nullable = false)
-    override var ordering: Long = 0
+    override var ordering: Long = 0,
     
     @Column(nullable = false)
     var visible: Boolean = true
 
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Account
-
-        if (id != other.id) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        return id.hashCode()
-    }
-
-    override fun toString(): String = "Account(id=$id, name='$name', currency=$currency, ordering=$ordering, visible=$visible)"
+): Ordered {
 
     fun toUserString(): String = "#$id '$name'"
 

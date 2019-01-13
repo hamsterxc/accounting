@@ -28,6 +28,9 @@ function populateTransactionFilter() {
     _setupFilteringElement('#filter-category', 'change', filter);
     _setupFilteringElement('#filter-comment', 'keyup', filter);
     accounts.forEach(account => _setupFilteringElement('#filter-account' + account.id, 'change', filter));
+
+    setupSubmit($('#filter-date-from'), filterDates);
+    setupSubmit($('#filter-date-to'), filterDates);
 }
 
 function _setupFilteringElement(selector, event, callback) {
@@ -96,11 +99,15 @@ function populateTransactionFilterDates() {
 }
 
 function filterDates() {
-    transactionsDateFrom = $('#filter-date-from').val();
-    transactionsDateTo = $('#filter-date-to').val();
-    $
-        .when(refreshDynamic())
-        .then(() => scrollToTop());
+    const from = $('#filter-date-from').val();
+    const to = $('#filter-date-to').val();
+    if ((transactionsDateFrom !== from) || (transactionsDateTo !== to)) {
+        transactionsDateFrom = from;
+        transactionsDateTo = to;
+        $
+            .when(refreshDynamic(false))
+            .then(() => scrollToTop());
+    }
 }
 
 function filterByDates(from, to) {

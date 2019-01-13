@@ -13,8 +13,7 @@ $(() => {
 
     $
         .when(refreshStatic())
-        .then(() => refreshDynamic())
-        .then(() => scrollToTop());
+        .then(() => refreshDynamic(true));
 });
 
 function refreshStatic() {
@@ -42,7 +41,7 @@ function refreshStatic() {
     return deferred.promise();
 }
 
-function refreshDynamic() {
+function refreshDynamic(populateTransactionsStatic = true) {
     let deferred = new $.Deferred();
 
     $.when(
@@ -57,7 +56,7 @@ function refreshDynamic() {
         transactionsDateFrom = formatDateTransaction(transactionsResponse[0].from);
         transactionsDateTo = formatDateTransaction(transactionsResponse[0].to);
 
-        populateTransactions();
+        populateTransactions(populateTransactionsStatic);
         populateTransactionFilterDates();
 
         const isRunningTotalsSwapped = runningTotals[0].to > runningTotals[1].to;

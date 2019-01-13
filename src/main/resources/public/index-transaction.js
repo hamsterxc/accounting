@@ -1,11 +1,12 @@
 let transactionsTable = {};
 
-function populateTransactions() {
+function populateTransactions(populateStatic = true) {
+    const table = transactionsTable;
     transactionsTable = populateDataTable({
         name: 'transaction',
-        selectorHeader: '#main-header',
+        selectorHeader: populateStatic ? '#main-header' : undefined,
         selectorBody: '#main-body',
-        selectorFooter: '#main-add',
+        selectorFooter: populateStatic ? '#main-add' : undefined,
         headerActions: '<a href="/manage.html">Manage</a>',
         rows: transactions.map(transaction => transaction.id),
         columns: [{
@@ -61,8 +62,13 @@ function populateTransactions() {
         actionAfterEdit: id => 'filter();fillOperations(' + id + ');setupTransactionSubmit(' + id + ');',
     });
 
-    fillOperations();
-    setupTransactionSubmit();
+    if (populateStatic) {
+        fillOperations();
+        setupTransactionSubmit();
+    } else {
+        transactionsTable['header'] = table['header'];
+        transactionsTable['footer'] = table['footer'];
+    }
 }
 
 function _buildTransactionDateInput(id, value) {
@@ -256,15 +262,16 @@ function _collectTransactionData(id) {
 
 function addTransaction() {
     performRequest('POST', 'transaction', _collectTransactionData())
-        .then(() => refreshDynamic());
+        .then(() => refreshDynamic(true))
+        .then(() => $('#' + buildInputId('transaction', 'date')).focus());
 }
 
 function updateTransaction(id) {
     performRequest('PUT', 'transaction/' + id, _collectTransactionData(id))
-        .then(() => refreshDynamic());
+        .then(() => refreshDynamic(false));
 }
 
 function performTransactionAction(id, action) {
     performRequest('POST', 'transaction/' + id + '/' + action)
-        .then(() => refreshDynamic());
+        .then(() => refreshDynamic(false));
 }

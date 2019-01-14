@@ -1,6 +1,6 @@
-package com.lonebytesoft.hamster.accounting.service;
+package com.lonebytesoft.hamster.accounting.service.transaction;
 
-import com.lonebytesoft.hamster.accounting.DatasourcePropertiesIgnoringContextInitializer;
+import com.lonebytesoft.hamster.accounting.app.Accounting;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Currency;
@@ -10,8 +10,8 @@ import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CategoryRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
+import com.lonebytesoft.hamster.accounting.service.EntityAction;
 import com.lonebytesoft.hamster.accounting.service.date.DateService;
-import com.lonebytesoft.hamster.accounting.service.transaction.TransactionService;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,9 +19,10 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -34,12 +35,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-@RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(locations = "classpath:/spring-test.xml", initializers = DatasourcePropertiesIgnoringContextInitializer.class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-public class TransactionServiceImplTest {
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes = {Accounting.class})
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto: create-drop"
+})
+@AutoConfigureTestDatabase
+public class TransactionServiceIT {
 
-    private static final Logger logger = LoggerFactory.getLogger(TransactionServiceImplTest.class);
+    private static final Logger logger = LoggerFactory.getLogger(TransactionServiceIT.class);
 
     @Autowired
     private AccountRepository accountRepository;
@@ -68,6 +72,11 @@ public class TransactionServiceImplTest {
 
     @Before
     public void before() {
+        transactionRepository.deleteAll();
+        accountRepository.deleteAll();
+        currencyRepository.deleteAll();
+        categoryRepository.deleteAll();
+
         long time = getBaseTime(); // June 15th, 10:00 AM
         createTransaction(time, "first", 2);
 

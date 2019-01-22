@@ -1,9 +1,11 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
-import com.lonebytesoft.hamster.accounting.controller.view.ActionResultView;
-import com.lonebytesoft.hamster.accounting.controller.view.CurrencyInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.CurrencyView;
 import com.lonebytesoft.hamster.accounting.controller.view.converter.ModelViewConverter;
+import com.lonebytesoft.hamster.accounting.controller.view.input.CurrencyInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.ActionResultView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.ActionStatus;
+import com.lonebytesoft.hamster.accounting.controller.view.output.CurrenciesView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.CurrencyView;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Config;
 import com.lonebytesoft.hamster.accounting.model.Currency;
@@ -55,11 +57,13 @@ public class CurrencyController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public Collection<CurrencyView> getCurrencies() {
+    public CurrenciesView getCurrencies() {
         currencyService.updateCurrencyValues();
-        return StreamSupport.stream(currencyRepository.findAll().spliterator(), false)
-                .map(viewConverter::convertToOutput)
-                .collect(Collectors.toList());
+        return new CurrenciesView(
+                StreamSupport.stream(currencyRepository.findAll().spliterator(), false)
+                        .map(viewConverter::convertToOutput)
+                        .collect(Collectors.toList())
+        );
     }
 
     @RequestMapping(method = RequestMethod.POST, consumes = "application/json")
@@ -121,9 +125,7 @@ public class CurrencyController {
                 throw new UnsupportedOperationException(action.getParamValue());
         }
 
-        final ActionResultView actionResultView = new ActionResultView();
-        actionResultView.setStatus(ActionResultView.Status.SUCCESS);
-        return actionResultView;
+        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
     private void deleteCurrency(final Currency currency) {

@@ -17,7 +17,7 @@ function refreshAccounts() {
     $.when(
         $.ajax('account')
     ).then(accountsResponse => {
-        accounts = accountsResponse;
+        accounts = sort(accountsResponse.accounts, 'ordering');
         populateAccounts();
         deferred.resolve();
     });
@@ -31,7 +31,7 @@ function refreshCategories() {
     $.when(
         $.ajax('category')
     ).then(categoriesResponse => {
-        categories = categoriesResponse;
+        categories = sort(categoriesResponse.categories, 'ordering');
         populateCategories();
         deferred.resolve();
     });
@@ -45,7 +45,7 @@ function refreshCurrencies() {
     $.when(
         $.ajax('currency')
     ).then(currenciesResponse => {
-        currencies = currenciesResponse;
+        currencies = currenciesResponse.currencies;
         populateCurrencies();
         deferred.resolve();
     });

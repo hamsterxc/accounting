@@ -1,7 +1,7 @@
 package com.lonebytesoft.hamster.accounting.controller.view.converter;
 
-import com.lonebytesoft.hamster.accounting.controller.view.AccountInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.AccountView;
+import com.lonebytesoft.hamster.accounting.controller.view.input.AccountInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.AccountView;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Currency;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
@@ -32,12 +32,13 @@ public class AccountViewConverter implements ModelViewConverter<Account, Account
 
     @Override
     public AccountView convertToOutput(Account model) {
-        final AccountView output = new AccountView();
-        output.setId(model.getId());
-        output.setName(model.getName());
-        output.setCurrencyId(model.getCurrency().getId());
-        output.setVisible(model.getVisible());
-        return output;
+        return new AccountView(
+                model.getId(),
+                model.getName(),
+                model.getCurrency().getId(),
+                model.getOrdering(),
+                model.getVisible()
+        );
     }
 
 }

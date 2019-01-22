@@ -1,15 +1,16 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
 import com.lonebytesoft.hamster.accounting.controller.exception.TransactionInputException;
-import com.lonebytesoft.hamster.accounting.controller.view.ActionResultView;
-import com.lonebytesoft.hamster.accounting.controller.view.AggregationInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.AggregationItemView;
-import com.lonebytesoft.hamster.accounting.controller.view.AggregationView;
-import com.lonebytesoft.hamster.accounting.controller.view.TransactionBoundaryView;
-import com.lonebytesoft.hamster.accounting.controller.view.TransactionInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.TransactionView;
-import com.lonebytesoft.hamster.accounting.controller.view.TransactionsView;
 import com.lonebytesoft.hamster.accounting.controller.view.converter.ModelViewConverter;
+import com.lonebytesoft.hamster.accounting.controller.view.input.AggregationInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.input.TransactionInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.ActionResultView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.ActionStatus;
+import com.lonebytesoft.hamster.accounting.controller.view.output.AggregationItemView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.AggregationView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.TransactionBoundaryView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.TransactionView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.TransactionsView;
 import com.lonebytesoft.hamster.accounting.model.Aggregation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
 import com.lonebytesoft.hamster.accounting.repository.TransactionRepository;
@@ -118,8 +119,8 @@ public class TransactionController {
         }
 
         logger.debug("Served 'boundary' request: lower = '{}', upper = '{}'",
-                transactionBoundaryView.getLower() == null ? "<absent>" : new Date(transactionBoundaryView.getLower()),
-                transactionBoundaryView.getUpper() == null ? "<absent>" : new Date(transactionBoundaryView.getUpper()));
+                new Date(transactionBoundaryView.getLower()),
+                new Date(transactionBoundaryView.getUpper()));
         return transactionBoundaryView;
     }
 
@@ -133,16 +134,14 @@ public class TransactionController {
         final long fromTimestamp = parseTimestampParam(from, fromDate, () -> 0L);
         final long toTimestamp = parseTimestampParam(to, toDate, () -> dateService.calculateDayStart(System.currentTimeMillis(), 1));
 
-        final TransactionsView transactionsView = new TransactionsView();
-        transactionsView.setTransactions(
+        return new TransactionsView(
+                fromTimestamp,
+                toTimestamp,
                 transactionRepository.findAllBetweenTime(fromTimestamp, toTimestamp)
                         .stream()
                         .map(transactionConverter::convertToOutput)
                         .collect(Collectors.toList())
         );
-        transactionsView.setFrom(fromTimestamp);
-        transactionsView.setTo(toTimestamp);
-        return transactionsView;
     }
 
     @RequestMapping(method = RequestMethod.POST, consumes = "application/json")
@@ -192,9 +191,7 @@ public class TransactionController {
                 break;
         }
 
-        final ActionResultView actionResultView = new ActionResultView();
-        actionResultView.setStatus(ActionResultView.Status.SUCCESS);
-        return actionResultView;
+        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
     private long parseTimestampParam(final Long param, final String paramDate, final Supplier<Long> defaultValue) {
@@ -217,10 +214,7 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(TransactionInputException.class)
     public ActionResultView handleTransactionInputException(final TransactionInputException e) {
-        final ActionResultView actionResultView = new ActionResultView();
-        actionResultView.setStatus(ActionResultView.Status.ERROR);
-        actionResultView.setInfo(e.getMessage());
-        return actionResultView;
+        return new ActionResultView(ActionStatus.ERROR, e.getMessage());
     }
 
 }

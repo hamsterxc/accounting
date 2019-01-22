@@ -23,3 +23,8 @@ function find(items, value, fieldName = 'id') {
 function findAll(items, value, fieldName = 'id') {
     return items.filter(item => item[fieldName] === value);
 }
+
+function sort(items, fieldName) {
+    items.sort((a, b) => a[fieldName] - b[fieldName]);
+    return items;
+}

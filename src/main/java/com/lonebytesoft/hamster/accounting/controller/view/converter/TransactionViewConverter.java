@@ -1,10 +1,10 @@
 package com.lonebytesoft.hamster.accounting.controller.view.converter;
 
 import com.lonebytesoft.hamster.accounting.controller.exception.TransactionInputException;
-import com.lonebytesoft.hamster.accounting.controller.view.OperationInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.OperationView;
-import com.lonebytesoft.hamster.accounting.controller.view.TransactionInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.TransactionView;
+import com.lonebytesoft.hamster.accounting.controller.view.input.OperationInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.input.TransactionInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.OperationView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.TransactionView;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
@@ -79,19 +79,18 @@ public class TransactionViewConverter implements ModelViewConverter<Transaction,
 
     @Override
     public TransactionView convertToOutput(Transaction model) {
-        final TransactionView output = new TransactionView();
-        output.setId(model.getId());
-        output.setTime(model.getTime());
-        output.setCategoryId(model.getCategory().getId());
-        output.setComment(model.getComment());
-        output.setVisible(model.getVisible());
-        output.setTotal(transactionService.calculateTotal(model));
-        output.setOperations(model.getOperations()
-                .stream()
-                .map(operationConverter::convertToOutput)
-                .collect(Collectors.toList())
+        return new TransactionView(
+                model.getId(),
+                model.getTime(),
+                model.getCategory().getId(),
+                model.getComment(),
+                model.getVisible(),
+                model.getOperations()
+                        .stream()
+                        .map(operationConverter::convertToOutput)
+                        .collect(Collectors.toList()),
+                transactionService.calculateTotal(model)
         );
-        return output;
     }
 
     private boolean isBlank(final String s) {

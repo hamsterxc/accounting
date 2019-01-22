@@ -1,7 +1,7 @@
 package com.lonebytesoft.hamster.accounting.controller.view.converter;
 
-import com.lonebytesoft.hamster.accounting.controller.view.CategoryInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.CategoryView;
+import com.lonebytesoft.hamster.accounting.controller.view.input.CategoryInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.CategoryView;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import org.springframework.stereotype.Component;
 
@@ -17,11 +17,12 @@ public class CategoryViewConverter implements ModelViewConverter<Category, Categ
 
     @Override
     public CategoryView convertToOutput(Category model) {
-        final CategoryView output = new CategoryView();
-        output.setId(model.getId());
-        output.setName(model.getName());
-        output.setVisible(model.getVisible());
-        return output;
+        return new CategoryView(
+                model.getId(),
+                model.getName(),
+                model.getOrdering(),
+                model.getVisible()
+        );
     }
 
 }

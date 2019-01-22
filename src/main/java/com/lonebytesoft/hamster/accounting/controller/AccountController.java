@@ -1,9 +1,11 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
-import com.lonebytesoft.hamster.accounting.controller.view.AccountInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.AccountView;
-import com.lonebytesoft.hamster.accounting.controller.view.ActionResultView;
 import com.lonebytesoft.hamster.accounting.controller.view.converter.ModelViewConverter;
+import com.lonebytesoft.hamster.accounting.controller.view.input.AccountInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.AccountView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.AccountsView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.ActionResultView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.ActionStatus;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.OrderedUtils;
@@ -44,10 +46,12 @@ public class AccountController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public Collection<AccountView> getAccounts() {
-        return StreamSupport.stream(accountRepository.findAll().spliterator(), false)
-                .map(viewConverter::convertToOutput)
-                .collect(Collectors.toList());
+    public AccountsView getAccounts() {
+        return new AccountsView(
+                StreamSupport.stream(accountRepository.findAll().spliterator(), false)
+                        .map(viewConverter::convertToOutput)
+                        .collect(Collectors.toList())
+        );
     }
 
     @RequestMapping(method = RequestMethod.POST, consumes = "application/json")
@@ -111,9 +115,7 @@ public class AccountController {
                 throw new UnsupportedOperationException(action.getParamValue());
         }
 
-        final ActionResultView actionResultView = new ActionResultView();
-        actionResultView.setStatus(ActionResultView.Status.SUCCESS);
-        return actionResultView;
+        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
     private void deleteAccount(final Account account) {

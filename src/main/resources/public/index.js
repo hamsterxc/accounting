@@ -25,9 +25,9 @@ function refreshStatic() {
         $.ajax('currency')
     ).then((accountsResponse, categoriesResponse, currenciesResponse) => {
         transactions = [];
-        accounts = accountsResponse[0];
-        categories = categoriesResponse[0];
-        currencies = currenciesResponse[0];
+        accounts = sort(accountsResponse[0].accounts, 'ordering');
+        categories = sort(categoriesResponse[0].categories, 'ordering');
+        currencies = currenciesResponse[0].currencies;
 
         populateTransactions();
         populateTransactionFilter();
@@ -51,7 +51,7 @@ function refreshDynamic(populateTransactionsStatic = true) {
     ).then((runningTotalsResponse, boundaryResponse, transactionsResponse) => {
         const runningTotals = runningTotalsResponse[0].items;
         const boundary = boundaryResponse[0];
-        transactions = transactionsResponse[0].transactions;
+        transactions = sort(transactionsResponse[0].transactions, 'time');
 
         transactionsDateFrom = formatDateTransaction(transactionsResponse[0].from);
         transactionsDateTo = formatDateTransaction(transactionsResponse[0].to);
@@ -79,8 +79,7 @@ function refreshDynamic(populateTransactionsStatic = true) {
         }
         return _buildSummaryRequest(boundaries);
     }).then((summariesResponse) => {
-        const summaries = summariesResponse.items.filter(item => Object.keys(item.aggregation).length > 0);
-        summaries.sort((a, b) => a.from - b.from);
+        const summaries = sort(summariesResponse.items.filter(item => Object.keys(item.aggregation).length > 0), 'from');
 
         populateSummary(summaries);
         filter();

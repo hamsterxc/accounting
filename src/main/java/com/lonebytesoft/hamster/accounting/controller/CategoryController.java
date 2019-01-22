@@ -1,9 +1,11 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
-import com.lonebytesoft.hamster.accounting.controller.view.ActionResultView;
-import com.lonebytesoft.hamster.accounting.controller.view.CategoryInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.CategoryView;
 import com.lonebytesoft.hamster.accounting.controller.view.converter.ModelViewConverter;
+import com.lonebytesoft.hamster.accounting.controller.view.input.CategoryInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.ActionResultView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.ActionStatus;
+import com.lonebytesoft.hamster.accounting.controller.view.output.CategoriesView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.CategoryView;
 import com.lonebytesoft.hamster.accounting.model.Category;
 import com.lonebytesoft.hamster.accounting.model.OrderedUtils;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
@@ -18,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -44,10 +45,12 @@ public class CategoryController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<CategoryView> getCategories() {
-        return StreamSupport.stream(categoryRepository.findAll().spliterator(), false)
-                .map(viewConverter::convertToOutput)
-                .collect(Collectors.toList());
+    public CategoriesView getCategories() {
+        return new CategoriesView(
+                StreamSupport.stream(categoryRepository.findAll().spliterator(), false)
+                        .map(viewConverter::convertToOutput)
+                        .collect(Collectors.toList())
+        );
     }
 
     @RequestMapping(method = RequestMethod.POST, consumes = "application/json")
@@ -111,9 +114,7 @@ public class CategoryController {
                 throw new UnsupportedOperationException(action.getParamValue());
         }
 
-        final ActionResultView actionResultView = new ActionResultView();
-        actionResultView.setStatus(ActionResultView.Status.SUCCESS);
-        return actionResultView;
+        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
     private void deleteCategory(final Category category) {

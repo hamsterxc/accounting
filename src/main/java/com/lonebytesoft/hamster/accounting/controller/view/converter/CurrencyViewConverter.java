@@ -1,7 +1,7 @@
 package com.lonebytesoft.hamster.accounting.controller.view.converter;
 
-import com.lonebytesoft.hamster.accounting.controller.view.CurrencyInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.CurrencyView;
+import com.lonebytesoft.hamster.accounting.controller.view.input.CurrencyInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.CurrencyView;
 import com.lonebytesoft.hamster.accounting.model.Currency;
 import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,14 +28,14 @@ public class CurrencyViewConverter implements ModelViewConverter<Currency, Curre
 
     @Override
     public CurrencyView convertToOutput(Currency model) {
-        final CurrencyView output = new CurrencyView();
-        output.setId(model.getId());
-        output.setCode(model.getCode());
-        output.setName(model.getName());
-        output.setSymbol(model.getSymbol());
-        output.setValue(model.getValue());
-        output.setDefault(model.getId() == configService.get().getCurrencyDefault().getId());
-        return output;
+        return new CurrencyView(
+                model.getId(),
+                model.getCode(),
+                model.getName(),
+                model.getSymbol(),
+                model.getValue(),
+                model.getId() == configService.get().getCurrencyDefault().getId()
+        );
     }
 
 }

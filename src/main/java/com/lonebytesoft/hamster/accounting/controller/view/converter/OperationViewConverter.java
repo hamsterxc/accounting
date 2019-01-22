@@ -1,8 +1,8 @@
 package com.lonebytesoft.hamster.accounting.controller.view.converter;
 
 import com.lonebytesoft.hamster.accounting.controller.exception.TransactionInputException;
-import com.lonebytesoft.hamster.accounting.controller.view.OperationInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.OperationView;
+import com.lonebytesoft.hamster.accounting.controller.view.input.OperationInputView;
+import com.lonebytesoft.hamster.accounting.controller.view.output.OperationView;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Currency;
 import com.lonebytesoft.hamster.accounting.model.Operation;
@@ -66,12 +66,12 @@ public class OperationViewConverter implements ModelViewConverter<Operation, Ope
 
     @Override
     public OperationView convertToOutput(Operation model) {
-        final OperationView output = new OperationView();
-        output.setAccountId(model.getAccount().getId());
-        output.setCurrencyId(model.getCurrency() == null ? null : model.getCurrency().getId());
-        output.setAmount(model.getAmount());
-        output.setActive(model.isActive());
-        return output;
+        return new OperationView(
+                model.getAccount().getId(),
+                model.getCurrency() == null ? null : model.getCurrency().getId(),
+                model.getAmount(),
+                model.isActive()
+        );
     }
 
 }

@@ -1,9 +1,4 @@
-spring:
-  jpa.hibernate.ddl-auto: create-drop
-  datasource:
-    url: jdbc:hsqldb:mem/accounting
-    username: sa
-    password:
+spring.jpa.hibernate.ddl-auto: create-drop
 
 accounting:
   currency.bankofrussia.language: en

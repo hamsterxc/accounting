@@ -1,0 +1,22 @@
+spring:
+  jpa.hibernate.ddl-auto: create-drop
+  datasource:
+    url: jdbc:hsqldb:mem/accounting
+    username: sa
+    password:
+
+accounting:
+  currency.bankofrussia.language: en
+  demo:
+    count:
+      category: 6
+      currency: 4
+      account: 4
+      transaction: 200
+    transaction:
+      dateRangeBack: 6m
+      dateRangeForward: 0d
+      operationCountMin: 1
+      operationCountMax: 4
+      operationAmountMin: -10000
+      operationAmountMax: 10000

@@ -14,7 +14,6 @@ import com.lonebytesoft.hamster.accounting.model.Transaction;
 import com.lonebytesoft.hamster.accounting.repository.AccountRepository;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.repository.OperationRepository;
-import com.lonebytesoft.hamster.accounting.service.EntityAction;
 import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
 import com.lonebytesoft.hamster.accounting.service.currency.CurrencyService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,27 +107,13 @@ public class CurrencyController {
         return entity;
     }
 
-    @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
-    public ActionResultView performCurrencyAction(
-            @PathVariable final long id,
-            @PathVariable final EntityAction action
+    @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
+    public ActionResultView deleteCurrency(
+            @PathVariable final long id
     ) {
         final Currency currency = currencyRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Could not find currency, id=" + id));
 
-        switch(action) {
-            case DELETE:
-                deleteCurrency(currency);
-                break;
-
-            default:
-                throw new UnsupportedOperationException(action.getParamValue());
-        }
-
-        return new ActionResultView(ActionStatus.SUCCESS, "");
-    }
-
-    private void deleteCurrency(final Currency currency) {
         if(currency.getId() == configService.get().getCurrencyDefault().getId()) {
             throw new IllegalArgumentException("Cannot delete default currency");
         }
@@ -153,6 +138,8 @@ public class CurrencyController {
         }
 
         currencyRepository.delete(currency);
+
+        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
 }

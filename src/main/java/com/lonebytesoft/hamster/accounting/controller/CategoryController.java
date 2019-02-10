@@ -106,10 +106,6 @@ public class CategoryController {
                 );
                 break;
 
-            case DELETE:
-                deleteCategory(category);
-                break;
-
             default:
                 throw new UnsupportedOperationException(action.getParamValue());
         }
@@ -117,7 +113,13 @@ public class CategoryController {
         return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
-    private void deleteCategory(final Category category) {
+    @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
+    public ActionResultView deleteCategory(
+            @PathVariable final long id
+    ) {
+        final Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Could not find category, id=" + id));
+
         final Collection<Transaction> transactions = transactionRepository.findByCategory(category);
         if(!transactions.isEmpty()) {
             throw new IllegalArgumentException(
@@ -126,6 +128,8 @@ public class CategoryController {
         }
 
         categoryRepository.delete(category);
+
+        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
 }

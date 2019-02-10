@@ -42,7 +42,7 @@ function populateAccounts() {
         ],
         actionUp: id => 'performAccountAction(' + id + ',' + '\'moveup\');',
         actionDown: id => 'performAccountAction(' + id + ',' + '\'movedown\');',
-        actionDelete: id => 'performAccountAction(' + id + ',' + '\'delete\');',
+        actionDelete: id => 'deleteAccount(' + id + ');',
         actionSave: id => 'updateAccount(' + id + ');',
         actionAdd: () => 'addAccount();',
         actionAfterEdit: id => 'setupAccountSubmit(' + id + ');',
@@ -86,5 +86,10 @@ function updateAccount(id) {
 
 function performAccountAction(id, action) {
     performRequest('POST', 'account/' + id + '/' + action)
+        .then(() => refreshAccounts());
+}
+
+function deleteAccount(id) {
+    performRequest('DELETE', 'account/' + id)
         .then(() => refreshAccounts());
 }

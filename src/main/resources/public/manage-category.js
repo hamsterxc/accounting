@@ -24,7 +24,7 @@ function populateCategories() {
         ],
         actionUp: id => 'performCategoryAction(' + id + ',' + '\'moveup\');',
         actionDown: id => 'performCategoryAction(' + id + ',' + '\'movedown\');',
-        actionDelete: id => 'performCategoryAction(' + id + ',' + '\'delete\');',
+        actionDelete: id => 'deleteCategory(' + id + ');',
         actionSave: id => 'updateCategory(' + id + ');',
         actionAdd: () => 'addCategory();',
         actionAfterEdit: id => 'setupCategorySubmit(' + id + ');',
@@ -67,5 +67,10 @@ function updateCategory(id) {
 
 function performCategoryAction(id, action) {
     performRequest('POST', 'category/' + id + '/' + action)
+        .then(() => refreshCategories());
+}
+
+function deleteCategory(id) {
+    performRequest('DELETE', 'category/' + id)
         .then(() => refreshCategories());
 }

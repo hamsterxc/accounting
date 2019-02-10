@@ -46,7 +46,7 @@ function populateCurrencies() {
                 supplierAdd: () => '<input type="text" id="' + buildInputId('currency', 'value') + '" size="15"/>',
             },
         ],
-        actionDelete: id => 'performCurrencyAction(' + id + ',' + '\'delete\');',
+        actionDelete: id => 'deleteCurrency(' + id + ');',
         actionSave: id => 'updateCurrency(' + id + ');',
         actionAdd: () => 'addCurrency();',
         actionAfterEdit: id => 'onCurrencyEditClick();setupCurrencySubmit(' + id + ');',
@@ -132,8 +132,8 @@ function updateCurrency(id) {
         .then(() => refreshAccounts());
 }
 
-function performCurrencyAction(id, action) {
-    performRequest('POST', 'currency/' + id + '/' + action)
+function deleteCurrency(id) {
+    performRequest('DELETE', 'currency/' + id)
         .then(() => refreshCurrencies())
         .then(() => refreshAccounts());
 }

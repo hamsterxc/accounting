@@ -186,10 +186,19 @@ public class TransactionController {
                 transactionService.performTimeAction(transaction, action);
                 break;
 
-            case DELETE:
-                transactionRepository.delete(transaction);
-                break;
+            default:
+                throw new UnsupportedOperationException(action.getParamValue());
         }
+
+        return new ActionResultView(ActionStatus.SUCCESS, "");
+    }
+
+
+    @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
+    public ActionResultView deleteTransaction(
+            @PathVariable final long id
+    ) {
+        transactionRepository.deleteById(id);
 
         return new ActionResultView(ActionStatus.SUCCESS, "");
     }

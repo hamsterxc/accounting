@@ -107,10 +107,6 @@ public class AccountController {
                 );
                 break;
 
-            case DELETE:
-                deleteAccount(account);
-                break;
-
             default:
                 throw new UnsupportedOperationException(action.getParamValue());
         }
@@ -118,7 +114,13 @@ public class AccountController {
         return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
-    private void deleteAccount(final Account account) {
+    @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
+    public ActionResultView deleteAccount(
+            @PathVariable final long id
+    ) {
+        final Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Could not find account, id=" + id));
+
         final Collection<Operation> operations = operationRepository.findByAccount(account);
         if(!operations.isEmpty()) {
             throw new IllegalArgumentException(
@@ -132,6 +134,8 @@ public class AccountController {
         }
 
         accountRepository.delete(account);
+
+        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
 }

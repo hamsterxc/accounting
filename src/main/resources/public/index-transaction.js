@@ -56,7 +56,7 @@ function populateTransactions(populateStatic = true) {
             ]),
         actionUp: id => 'performTransactionAction(' + id + ',' + '\'moveup\');',
         actionDown: id => 'performTransactionAction(' + id + ',' + '\'movedown\');',
-        actionDelete: id => 'performTransactionAction(' + id + ',' + '\'delete\');',
+        actionDelete: id => 'deleteTransaction(' + id + ');',
         actionSave: id => 'updateTransaction(' + id + ');',
         actionAdd: () => 'addTransaction();',
         actionAfterEdit: id => 'filter();fillOperations(' + id + ');setupTransactionSubmit(' + id + ');',
@@ -273,5 +273,10 @@ function updateTransaction(id) {
 
 function performTransactionAction(id, action) {
     performRequest('POST', 'transaction/' + id + '/' + action)
+        .then(() => refreshDynamic(false));
+}
+
+function deleteTransaction(id) {
+    performRequest('DELETE', 'transaction/' + id)
         .then(() => refreshDynamic(false));
 }

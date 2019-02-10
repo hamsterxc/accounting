@@ -7,7 +7,6 @@ public enum EntityAction {
 
     MOVE_UP("moveup"),
     MOVE_DOWN("movedown"),
-    DELETE("delete")
     ;
 
     private static final Map<String, EntityAction> values;

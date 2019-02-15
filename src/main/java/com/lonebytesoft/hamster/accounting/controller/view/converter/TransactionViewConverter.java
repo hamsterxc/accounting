@@ -1,6 +1,7 @@
 package com.lonebytesoft.hamster.accounting.controller.view.converter;
 
-import com.lonebytesoft.hamster.accounting.controller.exception.TransactionInputException;
+import com.lonebytesoft.hamster.accounting.controller.exception.BadRequestException;
+import com.lonebytesoft.hamster.accounting.controller.exception.CategoryNotFoundException;
 import com.lonebytesoft.hamster.accounting.controller.view.input.OperationInputView;
 import com.lonebytesoft.hamster.accounting.controller.view.input.TransactionInputView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.OperationView;
@@ -46,12 +47,12 @@ public class TransactionViewConverter implements ModelViewConverter<Transaction,
     public Transaction populateFromInput(Transaction base, TransactionInputView input) {
         final Long time = dateService.parse(input.getDate());
         if(time == null) {
-            throw new TransactionInputException("Could not parse date: '" + input.getDate() + "'");
+            throw new BadRequestException("Could not parse date: '" + input.getDate() + "'");
         }
         base.setTime(time);
 
         final Category category = categoryRepository.findById(input.getCategoryId())
-                .orElseThrow(() -> new TransactionInputException("Could not find category, id=" + input.getCategoryId()));
+                .orElseThrow(() -> new CategoryNotFoundException(input.getCategoryId()));
         base.setCategory(category);
 
         base.setComment(input.getComment());

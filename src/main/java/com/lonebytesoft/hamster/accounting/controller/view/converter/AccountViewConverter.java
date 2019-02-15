@@ -1,5 +1,6 @@
 package com.lonebytesoft.hamster.accounting.controller.view.converter;
 
+import com.lonebytesoft.hamster.accounting.controller.exception.CurrencyNotFoundException;
 import com.lonebytesoft.hamster.accounting.controller.view.input.AccountInputView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.AccountView;
 import com.lonebytesoft.hamster.accounting.model.Account;
@@ -24,7 +25,7 @@ public class AccountViewConverter implements ModelViewConverter<Account, Account
         base.setVisible(input.getVisible());
 
         final Currency currency = currencyRepository.findById(input.getCurrencyId())
-                .orElseThrow(() -> new IllegalArgumentException("Could not find currency, id=" + input.getCurrencyId()));
+                .orElseThrow(() -> new CurrencyNotFoundException(input.getCurrencyId()));
         base.setCurrency(currency);
 
         return base;

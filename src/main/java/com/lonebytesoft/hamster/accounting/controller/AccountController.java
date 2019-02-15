@@ -1,11 +1,12 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
+import com.lonebytesoft.hamster.accounting.controller.exception.AccountNotFoundException;
+import com.lonebytesoft.hamster.accounting.controller.exception.BadRequestException;
+import com.lonebytesoft.hamster.accounting.controller.exception.UnsupportedActionException;
 import com.lonebytesoft.hamster.accounting.controller.view.converter.ModelViewConverter;
 import com.lonebytesoft.hamster.accounting.controller.view.input.AccountInputView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.AccountView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.AccountsView;
-import com.lonebytesoft.hamster.accounting.controller.view.output.ActionResultView;
-import com.lonebytesoft.hamster.accounting.controller.view.output.ActionStatus;
 import com.lonebytesoft.hamster.accounting.model.Account;
 import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.OrderedUtils;
@@ -71,7 +72,7 @@ public class AccountController {
             @RequestBody final AccountInputView accountInputView
     ) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Could not find account, id=" + id));
+                .orElseThrow(() -> new AccountNotFoundException(id));
 
         account = viewConverter.populateFromInput(account, accountInputView);
         account = accountRepository.save(account);
@@ -79,12 +80,12 @@ public class AccountController {
     }
 
     @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
-    public ActionResultView performAccountAction(
+    public void performAccountAction(
             @PathVariable final long id,
             @PathVariable final EntityAction action
     ) {
         final Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Could not find account, id=" + id));
+                .orElseThrow(() -> new AccountNotFoundException(id));
 
         switch(action) {
             case MOVE_UP:
@@ -108,22 +109,20 @@ public class AccountController {
                 break;
 
             default:
-                throw new UnsupportedOperationException(action.getParamValue());
+                throw new UnsupportedActionException(action.getParamValue());
         }
-
-        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
     @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
-    public ActionResultView deleteAccount(
+    public void deleteAccount(
             @PathVariable final long id
     ) {
         final Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Could not find account, id=" + id));
+                .orElseThrow(() -> new AccountNotFoundException(id));
 
         final Collection<Operation> operations = operationRepository.findByAccount(account);
         if(!operations.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Account has some operations in the following transactions: " + Transaction.toUserString(
                             operations.stream()
                                     .map(Operation::getTransaction)
@@ -134,8 +133,6 @@ public class AccountController {
         }
 
         accountRepository.delete(account);
-
-        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
 }

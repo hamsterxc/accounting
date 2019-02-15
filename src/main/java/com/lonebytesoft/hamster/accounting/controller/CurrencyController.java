@@ -1,9 +1,9 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
+import com.lonebytesoft.hamster.accounting.controller.exception.BadRequestException;
+import com.lonebytesoft.hamster.accounting.controller.exception.CurrencyNotFoundException;
 import com.lonebytesoft.hamster.accounting.controller.view.converter.ModelViewConverter;
 import com.lonebytesoft.hamster.accounting.controller.view.input.CurrencyInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.output.ActionResultView;
-import com.lonebytesoft.hamster.accounting.controller.view.output.ActionStatus;
 import com.lonebytesoft.hamster.accounting.controller.view.output.CurrenciesView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.CurrencyView;
 import com.lonebytesoft.hamster.accounting.model.Account;
@@ -81,7 +81,7 @@ public class CurrencyController {
             @RequestBody final CurrencyInputView currencyInputView
     ) {
         Currency currency = currencyRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Could not find currency, id=" + id));
+                .orElseThrow(() -> new CurrencyNotFoundException(id));
 
         currency = viewConverter.populateFromInput(currency, currencyInputView);
         currency = saveAndUpdate(currency, currencyInputView.isDefault());
@@ -96,7 +96,7 @@ public class CurrencyController {
         currencyService.updateCurrencyValues();
         final long currencyId = entity.getId();
         entity = currencyRepository.findById(currencyId)
-                .orElseThrow(() -> new IllegalStateException("Could not find currency, id=" + currencyId));
+                .orElseThrow(() -> new CurrencyNotFoundException(currencyId));
 
         if(isDefault) {
             final Config config = configService.get();
@@ -108,26 +108,26 @@ public class CurrencyController {
     }
 
     @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
-    public ActionResultView deleteCurrency(
+    public void deleteCurrency(
             @PathVariable final long id
     ) {
         final Currency currency = currencyRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Could not find currency, id=" + id));
+                .orElseThrow(() -> new CurrencyNotFoundException(id));
 
         if(currency.getId() == configService.get().getCurrencyDefault().getId()) {
-            throw new IllegalArgumentException("Cannot delete default currency");
+            throw new BadRequestException("Cannot delete default currency");
         }
 
         final Collection<Account> accounts = accountRepository.findByCurrency(currency);
         if(!accounts.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Currency is used by the following accounts: " + Account.toUserString(accounts)
             );
         }
 
         final Collection<Operation> operations = operationRepository.findByCurrency(currency);
         if(!operations.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Currency is used by some operations in the following transactions: " + Transaction.toUserString(
                             operations.stream()
                                     .map(Operation::getTransaction)
@@ -138,8 +138,6 @@ public class CurrencyController {
         }
 
         currencyRepository.delete(currency);
-
-        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
 }

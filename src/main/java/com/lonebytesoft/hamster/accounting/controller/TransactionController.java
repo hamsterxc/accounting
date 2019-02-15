@@ -1,11 +1,11 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
-import com.lonebytesoft.hamster.accounting.controller.exception.TransactionInputException;
+import com.lonebytesoft.hamster.accounting.controller.exception.TransactionNotFoundException;
+import com.lonebytesoft.hamster.accounting.controller.exception.UnsupportedActionException;
+import com.lonebytesoft.hamster.accounting.controller.exception.UnsupportedAggregationException;
 import com.lonebytesoft.hamster.accounting.controller.view.converter.ModelViewConverter;
 import com.lonebytesoft.hamster.accounting.controller.view.input.AggregationInputView;
 import com.lonebytesoft.hamster.accounting.controller.view.input.TransactionInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.output.ActionResultView;
-import com.lonebytesoft.hamster.accounting.controller.view.output.ActionStatus;
 import com.lonebytesoft.hamster.accounting.controller.view.output.AggregationItemView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.AggregationView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.TransactionBoundaryView;
@@ -21,14 +21,11 @@ import com.lonebytesoft.hamster.accounting.service.transaction.TransactionServic
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -93,7 +90,7 @@ public class TransactionController {
                             break;
 
                         default:
-                            throw new TransactionInputException("Unsupported aggregation: " + aggregationInputView.getField());
+                            throw new UnsupportedAggregationException(aggregationInputView.getField().name());
                     }
 
                     return new AggregationItemView(from, to, aggregationInputView.getField(),
@@ -158,7 +155,7 @@ public class TransactionController {
     public TransactionView modifyTransaction(@PathVariable final long id,
                                              @RequestBody TransactionInputView transactionInputView) {
         final Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new TransactionInputException("Could not find transaction, id=" + id));
+                .orElseThrow(() -> new TransactionNotFoundException(id));
 
         final long time = transaction.getTime();
         transactionConverter.populateFromInput(transaction, transactionInputView);
@@ -175,10 +172,12 @@ public class TransactionController {
     }
 
     @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
-    public ActionResultView performTransactionAction(@PathVariable final long id,
-                                                     @PathVariable final EntityAction action) {
+    public void performTransactionAction(
+            @PathVariable final long id,
+            @PathVariable final EntityAction action
+    ) {
         final Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new TransactionInputException("Could not find transaction, id=" + id));
+                .orElseThrow(() -> new TransactionNotFoundException(id));
 
         switch(action) {
             case MOVE_UP:
@@ -187,20 +186,17 @@ public class TransactionController {
                 break;
 
             default:
-                throw new UnsupportedOperationException(action.getParamValue());
+                throw new UnsupportedActionException(action.getParamValue());
         }
-
-        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
-
     @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
-    public ActionResultView deleteTransaction(
+    public void deleteTransaction(
             @PathVariable final long id
     ) {
-        transactionRepository.deleteById(id);
-
-        return new ActionResultView(ActionStatus.SUCCESS, "");
+        final Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new TransactionNotFoundException(id));
+        transactionRepository.delete(transaction);
     }
 
     private long parseTimestampParam(final Long param, final String paramDate, final Supplier<Long> defaultValue) {
@@ -218,12 +214,6 @@ public class TransactionController {
         }
 
         return defaultValue.get();
-    }
-
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(TransactionInputException.class)
-    public ActionResultView handleTransactionInputException(final TransactionInputException e) {
-        return new ActionResultView(ActionStatus.ERROR, e.getMessage());
     }
 
 }

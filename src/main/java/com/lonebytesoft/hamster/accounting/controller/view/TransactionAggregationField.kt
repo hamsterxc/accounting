@@ -2,6 +2,7 @@ package com.lonebytesoft.hamster.accounting.controller.view
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonValue
+import com.lonebytesoft.hamster.accounting.controller.exception.UnsupportedAggregationException
 
 enum class TransactionAggregationField {
 
@@ -16,8 +17,8 @@ enum class TransactionAggregationField {
         private val BY_NAME = values().associateBy { it.name.toLowerCase() }
 
         @JsonCreator
-        fun getByName(name: String): TransactionAggregationField = BY_NAME[name]
-                ?: throw IllegalArgumentException("Field $name not found")
+        fun getByName(name: String): TransactionAggregationField = BY_NAME[name.toLowerCase()]
+                ?: throw UnsupportedAggregationException(name)
     }
 
 }

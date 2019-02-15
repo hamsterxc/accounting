@@ -1,9 +1,10 @@
 package com.lonebytesoft.hamster.accounting.controller;
 
+import com.lonebytesoft.hamster.accounting.controller.exception.BadRequestException;
+import com.lonebytesoft.hamster.accounting.controller.exception.CategoryNotFoundException;
+import com.lonebytesoft.hamster.accounting.controller.exception.UnsupportedActionException;
 import com.lonebytesoft.hamster.accounting.controller.view.converter.ModelViewConverter;
 import com.lonebytesoft.hamster.accounting.controller.view.input.CategoryInputView;
-import com.lonebytesoft.hamster.accounting.controller.view.output.ActionResultView;
-import com.lonebytesoft.hamster.accounting.controller.view.output.ActionStatus;
 import com.lonebytesoft.hamster.accounting.controller.view.output.CategoriesView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.CategoryView;
 import com.lonebytesoft.hamster.accounting.model.Category;
@@ -70,7 +71,7 @@ public class CategoryController {
             @RequestBody final CategoryInputView categoryInputView
     ) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Could not find category, id=" + id));
+                .orElseThrow(() -> new CategoryNotFoundException(id));
 
         category = viewConverter.populateFromInput(category, categoryInputView);
         category = categoryRepository.save(category);
@@ -78,12 +79,12 @@ public class CategoryController {
     }
 
     @RequestMapping(method = RequestMethod.POST, path = "/{id}/{action}")
-    public ActionResultView performCategoryAction(
+    public void performCategoryAction(
             @PathVariable final long id,
             @PathVariable final EntityAction action
     ) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Could not find category, id=" + id));
+                .orElseThrow(() -> new CategoryNotFoundException(id));
 
         switch(action) {
             case MOVE_UP:
@@ -107,29 +108,25 @@ public class CategoryController {
                 break;
 
             default:
-                throw new UnsupportedOperationException(action.getParamValue());
+                throw new UnsupportedActionException(action.getParamValue());
         }
-
-        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
     @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
-    public ActionResultView deleteCategory(
+    public void deleteCategory(
             @PathVariable final long id
     ) {
         final Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Could not find category, id=" + id));
+                .orElseThrow(() -> new CategoryNotFoundException(id));
 
         final Collection<Transaction> transactions = transactionRepository.findByCategory(category);
         if(!transactions.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Category contains the following transactions: " + Transaction.toUserString(transactions)
             );
         }
 
         categoryRepository.delete(category);
-
-        return new ActionResultView(ActionStatus.SUCCESS, "");
     }
 
 }

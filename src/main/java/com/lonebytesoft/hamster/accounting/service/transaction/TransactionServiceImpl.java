@@ -1,5 +1,6 @@
 package com.lonebytesoft.hamster.accounting.service.transaction;
 
+import com.lonebytesoft.hamster.accounting.controller.exception.UnsupportedActionException;
 import com.lonebytesoft.hamster.accounting.model.Currency;
 import com.lonebytesoft.hamster.accounting.model.Operation;
 import com.lonebytesoft.hamster.accounting.model.Transaction;
@@ -64,7 +65,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     private void assertTransactionTimeAction(final EntityAction action) {
         if((action != EntityAction.MOVE_UP) && (action != EntityAction.MOVE_DOWN)) {
-            throw new IllegalArgumentException("Unexpected transaction time action: " + action);
+            throw new UnsupportedActionException(action.getParamValue());
         }
     }
 

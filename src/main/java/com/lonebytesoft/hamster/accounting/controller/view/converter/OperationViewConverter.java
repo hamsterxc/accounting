@@ -1,6 +1,8 @@
 package com.lonebytesoft.hamster.accounting.controller.view.converter;
 
-import com.lonebytesoft.hamster.accounting.controller.exception.TransactionInputException;
+import com.lonebytesoft.hamster.accounting.controller.exception.AccountNotFoundException;
+import com.lonebytesoft.hamster.accounting.controller.exception.BadRequestException;
+import com.lonebytesoft.hamster.accounting.controller.exception.CurrencyNotFoundException;
 import com.lonebytesoft.hamster.accounting.controller.view.input.OperationInputView;
 import com.lonebytesoft.hamster.accounting.controller.view.output.OperationView;
 import com.lonebytesoft.hamster.accounting.model.Account;
@@ -37,7 +39,7 @@ public class OperationViewConverter implements ModelViewConverter<Operation, Ope
     @Override
     public Operation populateFromInput(Operation base, OperationInputView input) {
         final Account account = accountRepository.findById(input.getAccountId())
-                .orElseThrow(() -> new TransactionInputException("Could not find account, id=" + input.getAccountId()));
+                .orElseThrow(() -> new AccountNotFoundException(input.getAccountId()));
         base.setAccount(account);
 
         final double amount;
@@ -47,14 +49,14 @@ public class OperationViewConverter implements ModelViewConverter<Operation, Ope
 
             final String currencyCode = matcherWithCurrency.group(4);
             final Currency currency = currencyRepository.findByCode(currencyCode)
-                    .orElseThrow(() -> new TransactionInputException("Could not find currency, code=" + currencyCode));
+                    .orElseThrow(() -> new CurrencyNotFoundException(currencyCode));
             base.setCurrency(currency);
         } else {
             final Matcher matcher = OPERATION_AMOUNT_PATTERN.matcher(input.getAmount());
             if(matcher.find()) {
                 amount = Double.parseDouble(matcher.group(1));
             } else {
-                throw new TransactionInputException("Could not parse amount string: " + input.getAmount());
+                throw new BadRequestException("Could not parse amount string: " + input.getAmount());
             }
         }
         base.setAmount(amount);

@@ -1,7 +1,9 @@
 spring.jpa.hibernate.ddl-auto: create-drop
 
 accounting:
-  currency.bankofrussia.language: en
+  currency:
+    rateprovider: bankOfRussiaCurrencyRateProviderImpl
+    bankofrussia.language: en
   demo:
     count:
       category: 6

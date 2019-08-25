@@ -1,4 +1,4 @@
-package com.lonebytesoft.hamster.accounting.service.currency;
+package com.lonebytesoft.hamster.accounting.service.currency.provider;
 
 import com.lonebytesoft.hamster.accounting.model.Currency;
 

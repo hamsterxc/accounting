@@ -1,7 +1,9 @@
-package com.lonebytesoft.hamster.accounting.service.currency.bankofrussia;
+package com.lonebytesoft.hamster.accounting.service.currency.provider.bankofrussia;
 
 import com.lonebytesoft.hamster.accounting.model.Currency;
-import com.lonebytesoft.hamster.accounting.service.currency.CurrencyRateProvider;
+import com.lonebytesoft.hamster.accounting.service.currency.provider.AbstractDailyCurrencyRateProvider;
+import com.lonebytesoft.hamster.accounting.service.currency.provider.CurrencyRateProviderException;
+import com.lonebytesoft.hamster.accounting.service.currency.provider.XmlCurrencyRateProviderUtils;
 import com.lonebytesoft.hamster.accounting.service.date.DateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,22 +11,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
-public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvider {
+public class BankOfRussiaCurrencyRateProviderImpl extends AbstractDailyCurrencyRateProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(BankOfRussiaCurrencyRateProviderImpl.class);
 
@@ -39,72 +35,37 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
     private static final ThreadLocal<NumberFormat> VALUE_FORMAT =
             ThreadLocal.withInitial(() -> NumberFormat.getInstance(new Locale("ru", "RU")));
 
-    private final DateService dateService;
-    private final Unmarshaller unmarshaller;
-
-    private final URL urlRates;
-    private final URL urlCurrencies;
-
     private final BankOfRussiaCurrencyNameLanguage currencyNameLanguage;
 
-    private final Map<Long, Collection<Currency>> currenciesCache = new ConcurrentHashMap<>();
+    private final Unmarshaller unmarshaller;
+    private final URL urlRates;
+    private final URL urlCurrencies;
 
     @Autowired
     public BankOfRussiaCurrencyRateProviderImpl(
             final DateService dateService,
             @Value("${accounting.currency.bankofrussia.language:ru}") final BankOfRussiaCurrencyNameLanguage currencyNameLanguage
     ) {
-        this.dateService = dateService;
-        this.unmarshaller = buildUnmarshaller();
-
-        this.urlRates = buildUrl(URL_RATES, "Bad configuration: could not parse rates URL '" + URL_RATES + "'");
-        this.urlCurrencies = buildUrl(URL_CURRENCIES, "Bad configuration: could not parse currencies URL '" + URL_CURRENCIES + "'");
+        super(dateService);
 
         this.currencyNameLanguage = currencyNameLanguage;
-    }
 
-    private Unmarshaller buildUnmarshaller() {
-        try {
-            final JAXBContext jaxbContext = JAXBContext.newInstance(
-                    BankOfRussiaRates.class,
-                    BankOfRussiaCurrencies.class
-            );
-            return jaxbContext.createUnmarshaller();
-        } catch (JAXBException e) {
-            throw new IllegalStateException("Bad configuration: could not create XML unmarshaller", e);
-        }
-    }
-
-    private URL buildUrl(final String url, String failureMessage) {
-        try {
-            return new URL(url);
-        } catch (MalformedURLException e) {
-            throw new IllegalStateException(failureMessage, e);
-        }
+        this.unmarshaller = XmlCurrencyRateProviderUtils.buildUnmarshaller(
+                BankOfRussiaRates.class,
+                BankOfRussiaCurrencies.class
+        );
+        this.urlRates = XmlCurrencyRateProviderUtils.buildUrl(
+                URL_RATES,
+                () -> "Bad configuration: could not parse rates URL '" + URL_RATES + "'"
+        );
+        this.urlCurrencies = XmlCurrencyRateProviderUtils.buildUrl(
+                URL_CURRENCIES,
+                () -> "Bad configuration: could not parse currencies URL '" + URL_CURRENCIES + "'"
+        );
     }
 
     @Override
-    public Collection<Currency> getCurrencies(boolean useCache) {
-        try {
-            if (!useCache) {
-                currenciesCache.clear();
-            }
-
-            return currenciesCache.computeIfAbsent(
-                    dateService.calculateDayStart(System.currentTimeMillis(), 0),
-                    time -> requestCurrencies()
-            );
-        } catch (BankOfRussiaException e) {
-            if(e.getCause() == null) {
-                logger.warn(e.getMessage());
-            } else {
-                logger.warn(e.getMessage(), e.getCause());
-            }
-            return Collections.emptyList();
-        }
-    }
-
-    private Collection<Currency> requestCurrencies() {
+    protected Collection<Currency> requestCurrencies() {
         final BankOfRussiaRates ratesResponse = requestData(urlRates, "Could not obtain rates information");
         final BankOfRussiaCurrencies currenciesResponse = requestData(urlCurrencies, "Could not obtain currencies information");
 
@@ -113,7 +74,7 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
                 .map(rate -> {
                     final String code = rate.getIsoCode();
                     if ((code == null) || code.isEmpty()) {
-                        throw new BankOfRussiaException("Illegal currency ISO code in " + rate);
+                        throw new CurrencyRateProviderException("Illegal currency ISO code in " + rate);
                     }
 
                     return new Currency(
@@ -137,14 +98,9 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
         return currencies;
     }
 
-    @SuppressWarnings("unchecked")
     private <T> T requestData(final URL url, final String failureMessage) {
         logger.debug("Requesting {}", url);
-        try {
-            return (T) unmarshaller.unmarshal(url);
-        } catch (JAXBException e) {
-            throw new BankOfRussiaException(failureMessage, e);
-        }
+        return XmlCurrencyRateProviderUtils.requestData(unmarshaller, url, () -> failureMessage);
     }
 
     private double calculateValue(final BankOfRussiaRate rate) {
@@ -155,14 +111,14 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
             value = valueFormat.parse(rate.getValue()).doubleValue();
             multiplier = valueFormat.parse(rate.getMultiplier()).doubleValue();
         } catch (ParseException e) {
-            throw new BankOfRussiaException("Could not parse rates information in " + rate, e);
+            throw new CurrencyRateProviderException("Could not parse rates information in " + rate, e);
         }
 
         if(value <= 0) {
-            throw new BankOfRussiaException("Illegal currency rate value in " + rate);
+            throw new CurrencyRateProviderException("Illegal currency rate value in " + rate);
         }
         if(multiplier <= 0) {
-            throw new BankOfRussiaException("Illegal currency rate multiplier in " + rate);
+            throw new CurrencyRateProviderException("Illegal currency rate multiplier in " + rate);
         }
 
         return value / multiplier;
@@ -177,7 +133,7 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
                 .stream()
                 .filter(item -> code.equalsIgnoreCase(item.getIsoCode()))
                 .findFirst()
-                .orElseThrow(() -> new BankOfRussiaException("Could not find currency information for '" + code + "'"));
+                .orElseThrow(() -> new CurrencyRateProviderException("Could not find currency information for '" + code + "'"));
         return chooseName(language, currency.getNameRu(), currency.getNameEn());
     }
 
@@ -191,16 +147,6 @@ public class BankOfRussiaCurrencyRateProviderImpl implements CurrencyRateProvide
 
     private String emptyIfNull(final String s) {
         return s == null ? "" : s;
-    }
-
-    private static class BankOfRussiaException extends RuntimeException {
-        public BankOfRussiaException(String message) {
-            super(message);
-        }
-
-        public BankOfRussiaException(String message, Throwable cause) {
-            super(message, cause);
-        }
     }
 
 }

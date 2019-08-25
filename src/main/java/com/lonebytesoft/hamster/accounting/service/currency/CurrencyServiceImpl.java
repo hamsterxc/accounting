@@ -3,9 +3,12 @@ package com.lonebytesoft.hamster.accounting.service.currency;
 import com.lonebytesoft.hamster.accounting.model.Currency;
 import com.lonebytesoft.hamster.accounting.repository.CurrencyRepository;
 import com.lonebytesoft.hamster.accounting.service.config.ConfigService;
+import com.lonebytesoft.hamster.accounting.service.currency.provider.CurrencyRateProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -24,12 +27,15 @@ public class CurrencyServiceImpl implements CurrencyService {
     private final CurrencyRateProvider currencyRateProvider;
 
     @Autowired
-    public CurrencyServiceImpl(final CurrencyRepository currencyRepository,
-                               final ConfigService configService,
-                               final CurrencyRateProvider currencyRateProvider) {
+    public CurrencyServiceImpl(
+            final ApplicationContext applicationContext,
+            final CurrencyRepository currencyRepository,
+            final ConfigService configService,
+            @Value("${accounting.currency.rateprovider:europeanCentralBankCurrencyRateProviderImpl}") final String currencyRateProviderBeanName
+    ) {
         this.currencyRepository = currencyRepository;
         this.configService = configService;
-        this.currencyRateProvider = currencyRateProvider;
+        this.currencyRateProvider = (CurrencyRateProvider) applicationContext.getBean(currencyRateProviderBeanName);
     }
 
     @Override

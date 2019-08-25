@@ -1,4 +1,4 @@
-package com.lonebytesoft.hamster.accounting.service.currency.bankofrussia
+package com.lonebytesoft.hamster.accounting.service.currency.provider.bankofrussia
 
 import javax.xml.bind.annotation.XmlAccessType
 import javax.xml.bind.annotation.XmlAccessorType

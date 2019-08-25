@@ -6,6 +6,8 @@ spring:
       hibernate.globally_quoted_identifiers: true
       hibernate.id.new_generator_mappings: false
 
+accounting.currency.rateprovider: europeanCentralBankCurrencyRateProviderImpl
+
 logging.level:
   root: warn
   com.lonebytesoft.hamster.accounting: debug
